@@ -10,7 +10,7 @@ CXX = g++
 CPPFLAGS := -Iinclude -MMD -MP
 CXXFLAGS   := -Wall -O2
 LDFLAGS  := -Llib
-LDLIBS   := -lm
+LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system
 
 .PHONY: all clean
 
