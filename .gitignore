@@ -33,3 +33,6 @@
 
 # VSCode configs
 .vscode/
+
+# Output Files
+*.ppm

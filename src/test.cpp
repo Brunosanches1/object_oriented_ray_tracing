@@ -1,6 +1,6 @@
 #include <iostream>
 
-int main() 
+int main3() 
 {
 // Image
 	const int image_width = 256;
