@@ -7,8 +7,10 @@
 #include "camera.hpp"
 
 #include "material.hpp"
+#include "moving_sphere.hpp"
 
 #include <iostream>
+#include <omp.h>
 
 double hit_sphere(const point3& center, double radius, const ray& r) {
     vec3 oc = r.origin() - center;
@@ -67,7 +69,9 @@ hittable_list random_scene() {
                     // diffuse
                     auto albedo = color::random() * color::random();
                     sphere_material = make_shared<lambertian>(albedo);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
+                    auto center2 = center + vec3(0, random_double(0,.5), 0);
+                    world.add(make_shared<moving_sphere>(
+                        center, center2, 0.0, 1.0, 0.2, sphere_material));
                 } else if (choose_mat < 0.95) {
                     // metal
                     auto albedo = color::random(0.5, 1);
@@ -98,12 +102,9 @@ hittable_list random_scene() {
 int main() 
 {
 	// Image
-    const auto aspect_ratio = 3.0 / 2.0;
-    const int image_width = 400;
-    
-    const int image_height = static_cast<int>(image_width / aspect_ratio);
-    
-    const int samples_per_pixel = 20;
+    auto aspect_ratio = 16.0 / 9.0;
+    int image_width = 800;
+    int samples_per_pixel = 50;
     const int max_depth = 20; // param à modifier pour aller moins profondément pour la récursivité : 50 de base
     
     // World
@@ -135,21 +136,32 @@ int main()
 	auto dist_to_focus = 10.0;
     auto aperture = 0.1;
 
-	camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+	int image_height = static_cast<int>(image_width / aspect_ratio);
+
+
+    camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 		
 	// Render
+	[[gnu::unused]] // pour spécifier que s ne sera pas utilisé
+	int s; // pour que omp reconnaisse s en private
 	
 	std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 	for (int j = image_height-1; j >= 0; --j) {
 		std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
+		
 		for (int i = 0; i < image_width; ++i) {
 			color pixel_color(0, 0, 0);
+			
+			#pragma omp parallel private(s)
+			{
+			#pragma omp for
             for (int s = 0; s < samples_per_pixel; ++s) {
                 auto u = (i + random_double()) / (image_width-1);
                 auto v = (j + random_double()) / (image_height-1);
                 ray r = cam.get_ray(u, v);
                 pixel_color += ray_color(r, world, max_depth);
             }
+			} // fin de la //
             write_color(std::cout, pixel_color, samples_per_pixel);
 		}
 	}
