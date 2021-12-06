@@ -103,8 +103,8 @@ int main()
 {
 	// Image
     auto aspect_ratio = 16.0 / 9.0;
-    int image_width = 800;
-    int samples_per_pixel = 50;
+    int image_width = 400;
+    int samples_per_pixel = 40;
     const int max_depth = 20; // param à modifier pour aller moins profondément pour la récursivité : 50 de base
     
     // World
