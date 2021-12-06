@@ -198,7 +198,7 @@ void Engine::createImage()
                     pixel_color += ray_color(r, world, max_depth);
                 }
                 } // fin de la //
-                write_color(std::cout, pixel_color, samples_per_pixel);
+                write_color(pixels, pixel_color, samples_per_pixel);
             }
 	    }
         changed =false;
