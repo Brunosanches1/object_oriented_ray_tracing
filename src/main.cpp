@@ -31,8 +31,10 @@ void renderImage(sf::RenderWindow& window) {
 int main()
 {
     XInitThreads();
+
     sf::VideoMode videomode(image_width, image_height);
     sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default & (~sf::Style::Resize));
+    
     window.setActive(false);
     std::thread first(&renderImage, std::ref(window));
 
