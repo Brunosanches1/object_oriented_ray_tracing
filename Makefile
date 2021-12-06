@@ -8,10 +8,10 @@ SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
 CXX = g++
-CPPFLAGS := -MMD -MP -fopenmp
+CPPFLAGS := -MMD -MP 
 CXXFLAGS   := -Wall -O2 -std=c++14 
 LDFLAGS  := -Llib -L$(INC_DIR)/tinyxml2
-LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -ltinyxml2
+LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -ltinyxml2 -fopenmp
 ifdef DEBUG
 CXXFLAGS += -g
 endif
