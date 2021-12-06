@@ -22,4 +22,5 @@ int main3()
 	}
 	
 	std::cerr << "\nDone.\n";
+	return 0;
 }
