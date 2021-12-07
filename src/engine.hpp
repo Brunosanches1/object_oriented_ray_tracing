@@ -11,7 +11,8 @@ class Engine {
 
         int img_width;
         int img_height;  
-        VectorStream<sf::Uint8> pixels;
+        //VectorStream<sf::Uint8> pixels;
+        std::vector<sf::Uint8> pixels;
         int changed = true;
 
     public:

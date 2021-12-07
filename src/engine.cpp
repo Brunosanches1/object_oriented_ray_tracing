@@ -14,38 +14,6 @@
 Engine::Engine(sf::Texture& texture, int img_width, int img_height) :
     texture(texture), img_width(img_width), img_height(img_height), pixels(img_width*img_height*4) {}
 
-
-// void Engine::createImage() {
-//     for(auto i = 0; i < img_height*img_width*4; i+=4) {
-
-//         // Get coordinates based on i
-//         // lin must begins from img_height -1 to 0 in order to print the image
-//         // in the correct rotation
-//         // This function is just to test
-//         int col = (i/4) % (img_width);
-//         int lin =(img_height-1) - ((i / 4) / img_width);
-//         auto r = double(col) / (img_width-1);
-//         auto g = double(lin) / (img_height-1);
-//         auto b = 0.25;
-//         auto a = 1.0;
-
-//         // if(i == img_height*img_width*4 - 4) {
-//         //     std::cout << img_height << " " << img_width << std::endl;
-//         //     std::cout << ((i / 4) / img_width) << " " << col << std::endl;
-//         //     std::cout << r << " " << g << std::endl;
-//         // }
-//         sf::Uint8 ir = static_cast<sf::Uint8>(255.999 * r);
-//         sf::Uint8 ig = static_cast<sf::Uint8>(255.999 * g);
-//         sf::Uint8 ib = static_cast<sf::Uint8>(255.999 * b);
-//         sf::Uint8 ia = static_cast<sf::Uint8>(255.999 * a);
-
-//         pixels[i] = ir;
-//         pixels[i + 1] = ig;
-//         pixels[i + 2] = ib;
-//         pixels[i + 3] = ia;
-//     }
-// }
-
 double hit_sphere(const point3& center, double radius, const ray& r) {
     vec3 oc = r.origin() - center;
     auto a = r.direction().length_squared();
@@ -135,9 +103,8 @@ hittable_list random_scene() {
 
 void Engine::createImage() 
 {
-	// Image
-    auto aspect_ratio = 16.0 / 9.0;
-    int image_width = 800;
+    // Image
+    const auto aspect_ratio = 3.0 / 2.0;
     int samples_per_pixel = 50;
     const int max_depth = 20; // param à modifier pour aller moins profondément pour la récursivité : 50 de base
     
@@ -170,38 +137,32 @@ void Engine::createImage()
 	auto dist_to_focus = 10.0;
     auto aperture = 0.1;
 
-	int image_height = static_cast<int>(image_width / aspect_ratio);
-
-
     camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 		
-  
-	
 	// Render
     if (changed) {
           // Render
 	    [[gnu::unused]] // pour spécifier que s ne sera pas utilisé
 	    int s; // pour que omp reconnaisse s en private
         pixels.clear();
-        std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
-        for (int j = image_height-1; j >= 0; --j) {
+        std::cout << "P3\n" << img_width << ' ' << img_height
+         << "\n255\n";
+
+        #pragma omp parallel for schedule(dynamic)
+        for (int j = img_height-1; j >= 0; --j) {
             std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
-            for (int i = 0; i < image_width; ++i) {
+            for (int i = 0; i < img_width; ++i) {
                 color pixel_color(0, 0, 0);
-                #pragma omp parallel private(s)
-                {
-                #pragma omp for
                 for (int s = 0; s < samples_per_pixel; ++s) {
-                    auto u = (i + random_double()) / (image_width-1);
-                    auto v = (j + random_double()) / (image_height-1);
+                    auto u = (i + random_double()) / (img_width-1);
+                    auto v = (j + random_double()) / (img_height-1);
                     ray r = cam.get_ray(u, v);
                     pixel_color += ray_color(r, world, max_depth);
                 }
-                } // fin de la //
-                write_color(pixels, pixel_color, samples_per_pixel);
+                write_color(pixels, pixel_color, samples_per_pixel, (img_height-1) - j, i, img_width);
             }
 	    }
-        changed =false;
+        changed=false;
     }
 	
 	
