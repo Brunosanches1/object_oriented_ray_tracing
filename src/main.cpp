@@ -6,15 +6,19 @@
 #include <array>
 #include <X11/Xlib.h> 
 #include "engine.hpp"
+#include <omp.h>
 
 const auto aspect_ratio = 3.0 / 2.0;
-const int image_width = 400;
+const int image_width = 200;
 const int image_height = static_cast<int>(image_width / aspect_ratio);
 
 void renderImage(sf::RenderWindow& window) {
     sf::Texture texture;
     auto size = window.getSize();
+    
+    [[gnu::unused]] // pour spécifier que new_size ne sera pas utilisé
     auto new_size = size;
+    
     texture.create(size.x, size.y);
     Engine rtEngine(texture, size.x, size.y);
     sf::Sprite sprite(texture);
@@ -32,7 +36,7 @@ int main()
 {
     XInitThreads();
     sf::VideoMode videomode(image_width, image_height);
-    sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default & (~sf::Style::Resize));
+    sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default);
     window.setActive(false);
     std::thread first(&renderImage, std::ref(window));
 
