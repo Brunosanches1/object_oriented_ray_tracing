@@ -6,43 +6,13 @@
 #include "sphere.hpp"
 #include "rt.hpp"
 #include "camera.hpp"
+#include "moving_sphere.hpp"
 #include "material.hpp"
 #include <iostream>
+#include <omp.h>
 
 Engine::Engine(sf::Texture& texture, int img_width, int img_height) :
     texture(texture), img_width(img_width), img_height(img_height), pixels(img_width*img_height*4) {}
-
-
-// void Engine::createImage() {
-//     for(auto i = 0; i < img_height*img_width*4; i+=4) {
-
-//         // Get coordinates based on i
-//         // lin must begins from img_height -1 to 0 in order to print the image
-//         // in the correct rotation
-//         // This function is just to test
-//         int col = (i/4) % (img_width);
-//         int lin =(img_height-1) - ((i / 4) / img_width);
-//         auto r = double(col) / (img_width-1);
-//         auto g = double(lin) / (img_height-1);
-//         auto b = 0.25;
-//         auto a = 1.0;
-
-//         // if(i == img_height*img_width*4 - 4) {
-//         //     std::cout << img_height << " " << img_width << std::endl;
-//         //     std::cout << ((i / 4) / img_width) << " " << col << std::endl;
-//         //     std::cout << r << " " << g << std::endl;
-//         // }
-//         sf::Uint8 ir = static_cast<sf::Uint8>(255.999 * r);
-//         sf::Uint8 ig = static_cast<sf::Uint8>(255.999 * g);
-//         sf::Uint8 ib = static_cast<sf::Uint8>(255.999 * b);
-//         sf::Uint8 ia = static_cast<sf::Uint8>(255.999 * a);
-
-//         pixels[i] = ir;
-//         pixels[i + 1] = ig;
-//         pixels[i + 2] = ib;
-//         pixels[i + 3] = ia;
-//     }
-// }
 
 double hit_sphere(const point3& center, double radius, const ray& r) {
     vec3 oc = r.origin() - center;
@@ -101,7 +71,9 @@ hittable_list random_scene() {
                     // diffuse
                     auto albedo = color::random() * color::random();
                     sphere_material = make_shared<lambertian>(albedo);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
+                    auto center2 = center + vec3(0, random_double(0,.5), 0);
+                    world.add(make_shared<moving_sphere>(
+                        center, center2, 0.0, 1.0, 0.2, sphere_material));
                 } else if (choose_mat < 0.95) {
                     // metal
                     auto albedo = color::random(0.5, 1);
@@ -131,14 +103,10 @@ hittable_list random_scene() {
 
 void Engine::createImage() 
 {
-	// Image
+    // Image
     const auto aspect_ratio = 3.0 / 2.0;
-    const int image_width = 400;
-    
-    const int image_height = static_cast<int>(image_width / aspect_ratio);
-    
-    const int samples_per_pixel = 20;
-    const int max_depth = 50; // param à modifier pour aller moins profondément pour la récursivité : 50 de base
+    int samples_per_pixel = 50;
+    const int max_depth = 20; // param à modifier pour aller moins profondément pour la récursivité : 50 de base
     
     // World
     
@@ -169,30 +137,36 @@ void Engine::createImage()
 	auto dist_to_focus = 10.0;
     auto aperture = 0.1;
 
-	camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+    camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 		
 	// Render
     if (changed) {
+          // Render
+	    [[gnu::unused]] // pour spécifier que s ne sera pas utilisé
+	    int s; // pour que omp reconnaisse s en private
         pixels.clear();
-        std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
-        for (int j = image_height-1; j >= 0; --j) {
-            std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
-            for (int i = 0; i < image_width; ++i) {
+        std::cout << "P3\n" << img_width << ' ' << img_height
+         << "\n255\n";
+
+        #pragma omp parallel for schedule(dynamic)
+        for (int j = img_height-1; j >= 0; --j) {
+            //std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
+            for (int i = 0; i < img_width; ++i) {
                 color pixel_color(0, 0, 0);
                 for (int s = 0; s < samples_per_pixel; ++s) {
-                    auto u = (i + random_double()) / (image_width-1);
-                    auto v = (j + random_double()) / (image_height-1);
+                    auto u = (i + random_double()) / (img_width-1);
+                    auto v = (j + random_double()) / (img_height-1);
                     ray r = cam.get_ray(u, v);
                     pixel_color += ray_color(r, world, max_depth);
                 }
-                write_color(pixels, pixel_color, samples_per_pixel);
+                write_color(pixels, pixel_color, samples_per_pixel, (img_height-1) - j, i, img_width);
             }
 	    }
-        changed =false;
+        changed=false;
     }
 	
 	
-	std::cerr << "\nDone.\n";
+//wstd::cerr << "\nDone.\n";
 }
 
 void Engine::renderImage() {
