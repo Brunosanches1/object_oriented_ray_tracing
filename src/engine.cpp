@@ -150,7 +150,7 @@ void Engine::createImage()
 
         #pragma omp parallel for schedule(dynamic)
         for (int j = img_height-1; j >= 0; --j) {
-            std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
+            //std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
             for (int i = 0; i < img_width; ++i) {
                 color pixel_color(0, 0, 0);
                 for (int s = 0; s < samples_per_pixel; ++s) {
@@ -166,7 +166,7 @@ void Engine::createImage()
     }
 	
 	
-	std::cerr << "\nDone.\n";
+//wstd::cerr << "\nDone.\n";
 }
 
 void Engine::renderImage() {
