@@ -35,4 +35,8 @@ clean:
 $(INC_DIR)/tinyxml2/tinyxml2.a:
 	cd $(INC_DIR)/tinyxml2 && make all
 
+install:
+	git submodule update --init
+	sudo apt-get install libsfml-dev
+
 -include $(OBJ:.o=.d)
