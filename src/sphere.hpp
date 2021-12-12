@@ -4,6 +4,10 @@
 #include "hittable.hpp"
 #include "vec3.hpp"
 
+#include "../include/tinyxml2.h"
+
+#include "material.hpp"
+
 class sphere : public hittable {
     public:
         sphere() {}
@@ -15,6 +19,8 @@ class sphere : public hittable {
             const ray& r, double t_min, double t_max, hit_record& rec) const override;
 
 		virtual bool bounding_box(double time0, double time1, aabb& output_box) const override;
+
+        virtual tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const override;
 		
     public:
         point3 center;
@@ -54,6 +60,29 @@ bool sphere::bounding_box(double time0, double time1, aabb& output_box) const {
         center - vec3(radius, radius, radius),
         center + vec3(radius, radius, radius));
     return true;
+}
+
+tinyxml2::XMLElement* sphere::to_xml(tinyxml2::XMLDocument& xmlDoc) const {
+    tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Sphere");
+    
+    pElement->SetAttribute("radius", radius);
+    
+    tinyxml2::XMLElement* center_xml = xmlDoc.NewElement("Center");
+
+    center_xml->SetAttribute("x", center.x());
+    center_xml->SetAttribute("y", center.y());
+    center_xml->SetAttribute("z", center.z());
+
+    pElement->InsertEndChild(center_xml);
+
+    tinyxml2::XMLElement* material_xml = xmlDoc.NewElement("Material");
+    tinyxml2::XMLElement* materialElement = mat_ptr->to_xml(xmlDoc);
+    
+    material_xml->InsertEndChild(materialElement);
+
+    pElement->InsertEndChild(material_xml);
+    
+    return pElement;
 }
 
 

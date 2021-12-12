@@ -7,12 +7,16 @@
 #include <memory>
 #include <vector>
 
+#include "../include/tinyxml2.h"
+
+#include "material.hpp"
+
 using std::shared_ptr;
 using std::make_shared;
 
 class hittable_list : public hittable {
     public:
-        hittable_list() {}
+        hittable_list() {}  
         hittable_list(shared_ptr<hittable> object) { add(object); }
 
         void clear() { objects.clear(); }
@@ -23,6 +27,10 @@ class hittable_list : public hittable {
 
 		virtual bool bounding_box(
             double time0, double time1, aabb& output_box) const override;
+
+        virtual tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const override;
+
+        void saveXmlDocument(char* name);
 
     public:
         std::vector<shared_ptr<hittable>> objects;
@@ -57,6 +65,31 @@ bool hittable_list::bounding_box(double time0, double time1, aabb& output_box) c
     }
 
     return true;
+}
+
+tinyxml2::XMLElement* hittable_list::to_xml(tinyxml2::XMLDocument& xmlDoc) const {
+    tinyxml2::XMLElement * pElement = xmlDoc.NewElement("List");
+
+    for (auto & item : objects)
+    {
+        tinyxml2::XMLElement * pListElement = item->to_xml(xmlDoc);
+
+        pElement->InsertEndChild(pListElement);
+    }
+
+    return pElement;
+}
+
+void hittable_list::saveXmlDocument(char* name) {
+    tinyxml2::XMLDocument xmlDoc;
+
+    tinyxml2::XMLNode * pRoot = xmlDoc.NewElement("Root");
+
+    xmlDoc.InsertFirstChild(pRoot);
+
+    pRoot->InsertEndChild(to_xml(xmlDoc));
+
+    tinyxml2::XMLError eResult = xmlDoc.SaveFile(name);
 }
 
 #endif

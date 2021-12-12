@@ -24,7 +24,7 @@ color ray_color(const ray& r, const hittable& world, int depth) {
     if (world.hit(r, 0.001, infinity, rec)) {        
         ray scattered;
         color attenuation;
-        
+
         if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
             return attenuation * ray_color(scattered, world, depth-1);
         return color(0,0,0);
@@ -79,6 +79,7 @@ hittable_list random_scene() {
     auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
     world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
 
+    world.saveXmlDocument("RandomWorld.xml");
     return world;
 }
 

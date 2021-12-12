@@ -5,7 +5,7 @@ INC_DIR := include
 
 EXE := $(BIN_DIR)/ray_tracing.exe
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
-OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o) 
 
 CXX = g++
 CPPFLAGS := -MMD -MP -fopenmp
@@ -21,7 +21,7 @@ endif
 all: $(EXE)
 
 $(EXE): $(OBJ) | $(BIN_DIR)
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) include/tinyxml2.cpp -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@

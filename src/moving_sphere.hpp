@@ -5,6 +5,9 @@
 #include "aabb.hpp"
 #include "hittable.hpp"
 
+#include "../include/tinyxml2.h"
+
+#include "material.hpp"
 
 class moving_sphere : public hittable {
     public:
@@ -21,6 +24,8 @@ class moving_sphere : public hittable {
             double _time0, double _time1, aabb& output_box) const override;
             
         point3 center(double time) const;
+
+        virtual tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const override;
 
     public:
         point3 center0, center1;
@@ -69,6 +74,39 @@ bool moving_sphere::bounding_box(double _time0, double _time1, aabb& output_box)
         center(_time1) + vec3(radius, radius, radius));
     output_box = surrounding_box(box0, box1);
     return true;
+}
+
+tinyxml2::XMLElement* moving_sphere::to_xml(tinyxml2::XMLDocument& xmlDoc) const {
+    tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Moving Sphere");
+    
+    pElement->SetAttribute("Radius", radius);
+    pElement->SetAttribute("Time0", time0);
+    pElement->SetAttribute("Time1", time1);
+
+    tinyxml2::XMLElement* center0_xml = xmlDoc.NewElement("Center0");
+
+    center0_xml->SetAttribute("x", center0.x());
+    center0_xml->SetAttribute("y", center0.y());
+    center0_xml->SetAttribute("z", center0.z());
+
+    pElement->InsertEndChild(center0_xml);
+    
+    tinyxml2::XMLElement* center1_xml = xmlDoc.NewElement("Center1");
+
+    center1_xml->SetAttribute("x", center1.x());
+    center1_xml->SetAttribute("y", center1.y());
+    center1_xml->SetAttribute("z", center1.z());
+
+    pElement->InsertEndChild(center1_xml);
+
+    tinyxml2::XMLElement* material_xml = xmlDoc.NewElement("Material");
+    tinyxml2::XMLElement* materialElement = mat_ptr->to_xml(xmlDoc);
+    
+    material_xml->InsertEndChild(materialElement);
+
+    pElement->InsertEndChild(material_xml);
+    
+    return pElement;
 }
 
 #endif

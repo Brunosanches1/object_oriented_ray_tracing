@@ -3,6 +3,8 @@
 
 #include "rt.hpp"
 
+#include "../include/tinyxml2.h"
+
 struct hit_record;
 
 class material {
@@ -10,6 +12,8 @@ class material {
         virtual bool scatter(
             const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered
         ) const = 0;
+
+        virtual tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const {return nullptr;};
 };
 
 class lambertian : public material {
@@ -30,6 +34,19 @@ class lambertian : public material {
             return true;
         }
 
+        tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const {
+            tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Lambertian");
+
+            tinyxml2::XMLElement * color = xmlDoc.NewElement("Color");
+            color->SetAttribute("r", albedo.x());
+            color->SetAttribute("g", albedo.y());
+            color->SetAttribute("b", albedo.z());
+
+            pElement->InsertEndChild(color);
+
+            return pElement;
+        }
+
     public:
         color albedo;
 };
@@ -45,6 +62,21 @@ class metal : public material {
             scattered = ray(rec.p, reflected + fuzz*random_in_unit_sphere(), r_in.time());
             attenuation = albedo;
             return (dot(scattered.direction(), rec.normal) > 0);
+        }
+
+        tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const {
+            tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Metal");
+
+            tinyxml2::XMLElement * color = xmlDoc.NewElement("Color");
+            color->SetAttribute("r", albedo.x());
+            color->SetAttribute("g", albedo.y());
+            color->SetAttribute("b", albedo.z());
+
+            pElement->InsertEndChild(color);
+
+            pElement->SetAttribute("Fuzz", fuzz);
+
+            return pElement;
         }
 
     public:
@@ -76,6 +108,14 @@ class dielectric : public material {
 
             scattered = ray(rec.p, direction, r_in.time());
             return true;
+        }
+
+        tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const {
+            tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Dielectric");
+
+            pElement->SetAttribute("Ir", ir);
+
+            return pElement;
         }
 
     public:
