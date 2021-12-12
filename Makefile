@@ -10,15 +10,15 @@ OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 CXX = g++
 CPPFLAGS := -MMD -MP -fopenmp
 CXXFLAGS   := -Wall -O2 -std=c++14 
-LDFLAGS  := -Llib -L$(INC_DIR)/tinyxml2
-LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -ltinyxml2 -fopenmp
+LDFLAGS  := -Llib -Linclude
+LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -fopenmp
 ifdef DEBUG
 CXXFLAGS += -g
 endif
 
 .PHONY: all clean
 
-all: $(INC_DIR)/tinyxml2/tinyxml2.a | $(EXE)
+all: $(EXE)
 
 $(EXE): $(OBJ) | $(BIN_DIR)
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
@@ -32,11 +32,7 @@ $(BIN_DIR) $(OBJ_DIR):
 clean:
 	@$(RM) -rv $(BIN_DIR) $(OBJ_DIR)
 
-$(INC_DIR)/tinyxml2/tinyxml2.a:
-	cd $(INC_DIR)/tinyxml2 && make all
-
 install:
-	git submodule update --init
 	sudo apt-get install libsfml-dev
 
 -include $(OBJ:.o=.d)
