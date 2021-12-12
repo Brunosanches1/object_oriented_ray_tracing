@@ -14,20 +14,6 @@
 Engine::Engine(sf::Texture& texture, int img_width, int img_height) :
     texture(texture), img_width(img_width), img_height(img_height), pixels(img_width*img_height*4) {}
 
-double hit_sphere(const point3& center, double radius, const ray& r) {
-    vec3 oc = r.origin() - center;
-    auto a = r.direction().length_squared();
-    auto half_b = dot(oc, r.direction());
-    auto c = oc.length_squared() - radius*radius;
-    auto discriminant = half_b*half_b - a*c;
-    
-    if (discriminant < 0) {
-        return -1.0;
-    } else {
-        return (-half_b - sqrt(discriminant) ) / a;
-    }
-}
-
 color ray_color(const ray& r, const hittable& world, int depth) {
     hit_record rec;
     
@@ -35,15 +21,10 @@ color ray_color(const ray& r, const hittable& world, int depth) {
     if (depth <= 0)
         return color(0,0,0);
         
-    if (world.hit(r, 0.001, infinity, rec)) {
-        //~ point3 target = rec.p + rec.normal + random_unit_vector();
-        // on peut choisir plusieurs méthodes de rendu diffu -> légères différences de rendu
-        
-        //~ point3 target = rec.p + random_in_hemisphere(rec.normal);
-        //~ return 0.5 * ray_color(ray(rec.p, target - rec.p), world, depth-1);
-        
+    if (world.hit(r, 0.001, infinity, rec)) {        
         ray scattered;
         color attenuation;
+        
         if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
             return attenuation * ray_color(scattered, world, depth-1);
         return color(0,0,0);
@@ -109,20 +90,6 @@ void Engine::createImage()
     const int max_depth = 20; // param à modifier pour aller moins profondément pour la récursivité : 50 de base
     
     // World
-    
-    //~ auto R = cos(pi/4);
-    //~ hittable_list world;
-
-    //~ auto material_ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
-	//~ auto material_center = make_shared<lambertian>(color(0.1, 0.2, 0.5));
-	//~ auto material_left   = make_shared<dielectric>(1.5);
-	//~ auto material_right  = make_shared<metal>(color(0.8, 0.6, 0.2), 0.0);
-
-	//~ world.add(make_shared<sphere>(point3( 0.0, -100.5, -1.0), 100.0, material_ground));
-	//~ world.add(make_shared<sphere>(point3( 0.0,    0.0, -1.0),   0.5, material_center));
-	//~ world.add(make_shared<sphere>(point3(-1.0,    0.0, -1.0),   0.5, material_left));
-	//~ world.add(make_shared<sphere>(point3(-1.0,    0.0, -1.0), -0.45, material_left));
-	//~ world.add(make_shared<sphere>(point3( 1.0,    0.0, -1.0),   0.5, material_right));
 	
 	auto world = random_scene();
 
@@ -165,15 +132,12 @@ void Engine::createImage()
         changed=false;
     }
 	
-	
-//wstd::cerr << "\nDone.\n";
 }
 
 void Engine::renderImage() {
     createImage();
     texture.create(img_width, img_height);
     texture.update(pixels.data());
-    //std::cout << texture.getSize().x << " " << texture.getSize().y << std::endl;
 }
 
 void Engine::renderImage(sf::Texture& new_texture) {
@@ -197,7 +161,6 @@ void Engine::renderImage(sf::Texture& new_texture, int new_img_width, int new_im
         img_height = new_img_height;
         img_width = new_img_width;
 
-        
         pixels.resize(img_height*img_width*4);
     }
     texture = new_texture;
