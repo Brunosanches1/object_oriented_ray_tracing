@@ -7,12 +7,15 @@
 #include <X11/Xlib.h> 
 #include "engine.hpp"
 
+auto aspect_ratio = 3.0 / 2.0;
+unsigned int image_width = 400;
+unsigned int image_height = static_cast<unsigned int>(image_width / aspect_ratio); 
+
 void renderImage(sf::RenderWindow& window) {
     sf::Texture texture;
-    auto size = window.getSize();
-    auto new_size = size;
-    texture.create(size.x, size.y);
-    Engine rtEngine(texture, size.x, size.y);
+
+    texture.create(image_width, image_height);
+    Engine rtEngine(texture, image_width, image_height);
     sf::Sprite sprite(texture);
 
     while (window.isOpen())
@@ -25,15 +28,12 @@ void renderImage(sf::RenderWindow& window) {
 }
 
 int main()
-{
-    const auto aspect_ratio = 3.0 / 2.0;
-    const int image_width = 400;
-    const int image_height = static_cast<int>(image_width / aspect_ratio);  
+{ 
 
     XInitThreads();
 
     sf::VideoMode videomode(image_width, image_height);
-    sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default & (~sf::Style::Resize));
+    sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default);
     
     window.setActive(false);
     std::thread first(&renderImage, std::ref(window));
