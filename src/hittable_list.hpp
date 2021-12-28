@@ -2,10 +2,14 @@
 #define HITTABLE_LIST_H
 
 #include "hittable.hpp"
+#include "sphere.hpp"
+#include "moving_sphere.hpp"
 #include "aabb.hpp"
 
 #include <memory>
 #include <vector>
+#include <iostream>
+#include <cstring>
 
 #include "../include/tinyxml2.h"
 
@@ -14,10 +18,15 @@
 using std::shared_ptr;
 using std::make_shared;
 
+#ifndef XMLCheckResult
+	#define XMLCheckResult(a_eResult) if (a_eResult != tinyxml2::XML_SUCCESS) { printf("Error: %i\n", a_eResult); }
+#endif
+
 class hittable_list : public hittable {
     public:
         hittable_list() {}  
         hittable_list(shared_ptr<hittable> object) { add(object); }
+        hittable_list(const char* xml_filename);
 
         void clear() { objects.clear(); }
         void add(shared_ptr<hittable> object) { objects.push_back(object); }
@@ -30,7 +39,7 @@ class hittable_list : public hittable {
 
         virtual tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const override;
 
-        void saveXmlDocument(char* name);
+        void saveXmlDocument(char* filename);
 
     public:
         std::vector<shared_ptr<hittable>> objects;
@@ -80,7 +89,7 @@ tinyxml2::XMLElement* hittable_list::to_xml(tinyxml2::XMLDocument& xmlDoc) const
     return pElement;
 }
 
-void hittable_list::saveXmlDocument(char* name) {
+void hittable_list::saveXmlDocument(char* filename) {
     tinyxml2::XMLDocument xmlDoc;
 
     tinyxml2::XMLNode * pRoot = xmlDoc.NewElement("Root");
@@ -89,7 +98,38 @@ void hittable_list::saveXmlDocument(char* name) {
 
     pRoot->InsertEndChild(to_xml(xmlDoc));
 
-    tinyxml2::XMLError eResult = xmlDoc.SaveFile(name);
+    xmlDoc.SaveFile(filename);
+}
+
+
+hittable_list::hittable_list(const char* xml_filename) {
+    tinyxml2::XMLDocument xmlDoc;
+
+    tinyxml2::XMLError eResult = xmlDoc.LoadFile(xml_filename);
+    XMLCheckResult(eResult);
+
+    tinyxml2::XMLNode * pRoot = xmlDoc.FirstChild();
+    if (pRoot == nullptr) throw std::invalid_argument("File does not contain a root element");
+
+    tinyxml2::XMLElement * pElement = pRoot->FirstChildElement("List");
+    if (pElement == nullptr) throw std::invalid_argument("File does not contain a list element");
+
+    tinyxml2::XMLElement * pListElement = pElement->FirstChildElement();
+    while (pListElement != nullptr)
+    {
+        if (strcmp(pListElement->Name(), "Sphere") == 0) {
+            objects.push_back(make_shared<sphere>(pListElement));
+        }
+        else if (strcmp(pListElement->Name(), "Moving_Sphere") == 0) {
+            objects.push_back(make_shared<moving_sphere>(pListElement));
+        }
+        else {
+            throw std::invalid_argument("Object not defined or list inside list");
+        }
+
+        pListElement = pListElement->NextSiblingElement();
+    }
+
 }
 
 #endif

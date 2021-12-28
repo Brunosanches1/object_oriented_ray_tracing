@@ -9,16 +9,13 @@ OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
 CXX = g++
 CPPFLAGS := -MMD -MP -fopenmp
-CXXFLAGS   := -Wall -O2 -std=c++14 
+CXXFLAGS   := -Wall -O2 -std=c++14  -g
 LDFLAGS  := -Llib -Linclude
 LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -fopenmp
-ifdef DEBUG
-CXXFLAGS += -g
-endif
 
 .PHONY: all clean
 
-all: $(EXE)
+all: clean $(EXE)
 
 $(EXE): $(OBJ) | $(BIN_DIR)
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) include/tinyxml2.cpp -o $@
@@ -34,5 +31,8 @@ clean:
 
 install:
 	sudo apt-get install libsfml-dev
+
+test: $(EXE)
+	./$(EXE)
 
 -include $(OBJ:.o=.d)

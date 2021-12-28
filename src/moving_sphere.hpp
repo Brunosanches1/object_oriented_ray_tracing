@@ -16,6 +16,7 @@ class moving_sphere : public hittable {
             point3 cen0, point3 cen1, double _time0, double _time1, double r, shared_ptr<material> m)
             : center0(cen0), center1(cen1), time0(_time0), time1(_time1), radius(r), mat_ptr(m)
         {};
+        moving_sphere(tinyxml2::XMLElement* pElement);
 
         virtual bool hit(
             const ray& r, double t_min, double t_max, hit_record& rec) const override;
@@ -33,6 +34,20 @@ class moving_sphere : public hittable {
         double radius;
         shared_ptr<material> mat_ptr;
 };
+
+moving_sphere::moving_sphere(tinyxml2::XMLElement* pElement) {
+    radius = pElement->DoubleAttribute("Radius");
+    time0 = pElement->DoubleAttribute("Time0");
+    time1 = pElement->DoubleAttribute("Time1");
+
+    tinyxml2::XMLElement* center0_xml = pElement->FirstChildElement("Center0");
+    center0 = point3(center0_xml->DoubleAttribute("x"), center0_xml->DoubleAttribute("y"), center0_xml->DoubleAttribute("z"));
+
+    tinyxml2::XMLElement* center1_xml = pElement->FirstChildElement("Center1");
+    center1 = point3(center1_xml->DoubleAttribute("x"), center1_xml->DoubleAttribute("y"), center1_xml->DoubleAttribute("z"));
+
+    mat_ptr = material::material_from_xml(pElement->FirstChildElement("Material"));
+}
 
 point3 moving_sphere::center(double time) const {
     return center0 + ((time - time0) / (time1 - time0))*(center1 - center0);
@@ -77,7 +92,7 @@ bool moving_sphere::bounding_box(double _time0, double _time1, aabb& output_box)
 }
 
 tinyxml2::XMLElement* moving_sphere::to_xml(tinyxml2::XMLDocument& xmlDoc) const {
-    tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Moving Sphere");
+    tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Moving_Sphere");
     
     pElement->SetAttribute("Radius", radius);
     pElement->SetAttribute("Time0", time0);

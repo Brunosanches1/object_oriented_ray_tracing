@@ -14,6 +14,7 @@ class sphere : public hittable {
         sphere(point3 cen, double r) : center(cen), radius(r) {};
         sphere(point3 cen, double r, shared_ptr<material> m)
             : center(cen), radius(r), mat_ptr(m) {};
+        sphere(tinyxml2::XMLElement* pElement);
 
         virtual bool hit(
             const ray& r, double t_min, double t_max, hit_record& rec) const override;
@@ -27,6 +28,15 @@ class sphere : public hittable {
         double radius;
         shared_ptr<material> mat_ptr;
 };
+
+sphere::sphere(tinyxml2::XMLElement* pElement) {
+    radius = pElement->DoubleAttribute("Radius");
+
+    tinyxml2::XMLElement* center_xml = pElement->FirstChildElement("Center");
+    center = point3(center_xml->DoubleAttribute("x"), center_xml->DoubleAttribute("y"), center_xml->DoubleAttribute("z"));
+
+    mat_ptr = material::material_from_xml(pElement->FirstChildElement("Material"));
+}
 
 bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const {
     vec3 oc = r.origin() - center;
@@ -65,7 +75,7 @@ bool sphere::bounding_box(double time0, double time1, aabb& output_box) const {
 tinyxml2::XMLElement* sphere::to_xml(tinyxml2::XMLDocument& xmlDoc) const {
     tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Sphere");
     
-    pElement->SetAttribute("radius", radius);
+    pElement->SetAttribute("Radius", radius);
     
     tinyxml2::XMLElement* center_xml = xmlDoc.NewElement("Center");
 

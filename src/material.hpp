@@ -11,14 +11,20 @@ class material {
     public:
         virtual bool scatter(
             const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered
-        ) const = 0;
-
+        ) const = 0;        
         virtual tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const {return nullptr;};
+        static std::shared_ptr<material> material_from_xml(tinyxml2::XMLElement* pElement);
 };
 
 class lambertian : public material {
     public:
         lambertian(const color& a) : albedo(a) {}
+
+        lambertian(tinyxml2::XMLElement* pElement) {
+            tinyxml2::XMLElement * color = pElement->FirstChildElement("Color");
+
+            albedo = vec3(color->DoubleAttribute("r"), color->DoubleAttribute("g"), color->DoubleAttribute("b"));
+        }
 
         virtual bool scatter(
             const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered
@@ -55,6 +61,12 @@ class metal : public material {
     public:
         metal(const color& a, double f) : albedo(a), fuzz(f < 1 ? f : 1) {}
 
+        metal(tinyxml2::XMLElement* pElement) {
+            fuzz = pElement->DoubleAttribute("Fuzz");
+            tinyxml2::XMLElement * color = pElement->FirstChildElement("Color");
+            albedo = vec3(color->DoubleAttribute("r"), color->DoubleAttribute("g"), color->DoubleAttribute("b"));
+        }
+
         virtual bool scatter(
             const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered
         ) const override {
@@ -87,6 +99,10 @@ class metal : public material {
 class dielectric : public material {
     public:
         dielectric(double index_of_refraction) : ir(index_of_refraction) {}
+
+        dielectric(tinyxml2::XMLElement* pElement) {
+            ir = pElement->DoubleAttribute("Ir");
+        }
 
         virtual bool scatter(
             const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered
@@ -129,5 +145,21 @@ class dielectric : public material {
 			return r0 + (1-r0)*pow((1 - cosine),5);
 		}
 };
+
+std::shared_ptr<material> material::material_from_xml(tinyxml2::XMLElement* pElement) {
+    tinyxml2::XMLElement* matElement = pElement->FirstChildElement();
+    if (strcmp(matElement->Name(), "Lambertian") == 0) {
+        return std::make_shared<lambertian>(matElement);
+    }
+    else if (strcmp(matElement->Name(), "Metal") == 0) {
+        return std::make_shared<metal>(matElement);
+    }
+    else if (strcmp(matElement->Name(), "Dielectric") == 0) {
+        return std::make_shared<dielectric>(matElement);
+    }
+    else {
+        throw std::invalid_argument("Material " + std::string(matElement->Name()) + " isn't defined");
+    }
+} 
 
 #endif
