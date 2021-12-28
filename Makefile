@@ -10,8 +10,8 @@ OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 CXX = g++
 CPPFLAGS := -MMD -MP -fopenmp
 CXXFLAGS   := -Wall -O2 -std=c++14  -g
-LDFLAGS  := -Llib -Linclude
-LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -fopenmp
+LDFLAGS  := -L./lib -Linclude -Iinclude/sfml-widgets-master/src
+LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -fopenmp lib/libsfml-widgets.a
 
 .PHONY: all clean
 
@@ -21,7 +21,7 @@ $(EXE): $(OBJ) | $(BIN_DIR)
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) include/tinyxml2.cpp -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Iinclude/sfml-widgets-master/src -c $< -o $@
 
 $(BIN_DIR) $(OBJ_DIR):
 	mkdir -p $@
@@ -31,6 +31,10 @@ clean:
 
 install:
 	sudo apt-get install libsfml-dev
+	cd include/sfml-widgets-master && make
+	mkdir -p lib/
+	cp include/sfml-widgets-master/lib/libsfml-widgets.a lib/libsfml-widgets.a
+
 
 test: $(EXE)
 	./$(EXE)
