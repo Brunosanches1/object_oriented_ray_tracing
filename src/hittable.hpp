@@ -29,4 +29,5 @@ class hittable {
         virtual tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const = 0;
 };
 
+
 #endif

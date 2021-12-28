@@ -2,6 +2,7 @@
 #define RAY_H
 
 #include "vec3.hpp"
+#include "hittable_list.hpp"
 
 class ray {
     public:

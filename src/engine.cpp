@@ -1,19 +1,25 @@
 #include "engine.hpp"
+#include "hittable_list.hpp"
 #include "color.hpp"
 #include "vec3.hpp"
 #include "ray.hpp"
-#include "hittable_list.hpp"
-#include "sphere.hpp"
 #include "rt.hpp"
 #include "camera.hpp"
-#include "moving_sphere.hpp"
 #include "material.hpp"
-#include <iostream>
-#include <omp.h>
 
-Engine::Engine(sf::Texture& texture, int img_width, int img_height) :
-    texture(texture), img_width(img_width), img_height(img_height), pixels(img_width*img_height*4) {}
+Engine::Engine(sf::Texture& texture, unsigned int image_width, unsigned int image_height, 
+               int samples_per_pixel,
+               int max_depth) :
+    texture(texture), img_width(image_width), img_height(image_height), pixels(img_width*img_height*4),
+    samples_per_pixel(samples_per_pixel), aspect_ratio(img_width / img_height), max_depth(max_depth)  {}
 
+Engine::Engine(sf::Texture& texture, unsigned int image_width, double aspect_ratio, 
+               int samples_per_pixel,
+               int max_depth) :
+    texture(texture), img_width(image_width), img_height(img_width/aspect_ratio), pixels(img_width*img_height*4),
+    samples_per_pixel(samples_per_pixel), aspect_ratio(aspect_ratio), max_depth(max_depth) {}
+
+// Return color of a ray
 color ray_color(const ray& r, const hittable& world, int depth) {
     hit_record rec;
     
@@ -32,55 +38,6 @@ color ray_color(const ray& r, const hittable& world, int depth) {
     vec3 unit_direction = unit_vector(r.direction());
     auto t = 0.5*(unit_direction.y() + 1.0);
     return (1.0-t)*color(1.0, 1.0, 1.0) + t*color(0.5, 0.7, 1.0);
-}
-
-hittable_list random_scene() {
-    hittable_list world;
-
-    auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
-    world.add(make_shared<sphere>(point3(0,-1000,0), 1000, ground_material));
-
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
-            auto choose_mat = random_double();
-            point3 center(a + 0.9*random_double(), 0.2, b + 0.9*random_double());
-
-            if ((center - point3(4, 0.2, 0)).length() > 0.9) {
-                shared_ptr<material> sphere_material;
-
-                if (choose_mat < 0.8) {
-                    // diffuse
-                    auto albedo = color::random() * color::random();
-                    sphere_material = make_shared<lambertian>(albedo);
-                    auto center2 = center + vec3(0, random_double(0,.5), 0);
-                    world.add(make_shared<moving_sphere>(
-                        center, center2, 0.0, 1.0, 0.2, sphere_material));
-                } else if (choose_mat < 0.95) {
-                    // metal
-                    auto albedo = color::random(0.5, 1);
-                    auto fuzz = random_double(0, 0.5);
-                    sphere_material = make_shared<metal>(albedo, fuzz);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                } else {
-                    // glass
-                    sphere_material = make_shared<dielectric>(1.5);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                }
-            }
-        }
-    }
-
-    auto material1 = make_shared<dielectric>(1.5);
-    world.add(make_shared<sphere>(point3(0, 1, 0), 1.0, material1));
-
-    auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
-    world.add(make_shared<sphere>(point3(-4, 1, 0), 1.0, material2));
-
-    auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
-
-    world.saveXmlDocument("RandomWorld.xml");
-    return world;
 }
 
 void Engine::createImage() 

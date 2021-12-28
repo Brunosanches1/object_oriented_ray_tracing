@@ -1,6 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include <ostream>
-#include "vector_stream.hpp"
+#include <iostream>
+#include <omp.h>
+#include <vector>
 
 #ifndef ENGINE_HPP
 #define ENGINE_HPP
@@ -14,6 +16,9 @@ class Engine {
         //VectorStream<sf::Uint8> pixels;
         std::vector<sf::Uint8> pixels;
         int changed = true;
+        int samples_per_pixel;
+        double aspect_ratio;
+        int max_depth;
 
     public:
         // Obligate programmer to pass parameters in order to create the engine
@@ -21,7 +26,13 @@ class Engine {
 
         Engine(const Engine&);
 
-        Engine(sf::Texture&, int image_width, int img_height);
+        Engine(sf::Texture& texture, unsigned int image_width, unsigned int image_height, 
+               int samples_per_pixel = 50,
+               int max_depth = 20);
+
+        Engine(sf::Texture& texture, unsigned int image_width, double aspect_ratio,
+               int samples_per_pixel = 50,
+               int max_depth = 20);
 
         void createImage();
 
