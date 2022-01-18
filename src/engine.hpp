@@ -29,6 +29,7 @@ class Engine {
         double aspect_ratio;
         int max_depth;
         hittable_list world;
+        camera cam;
 
     public:
         // Obligate programmer to pass parameters in order to create the engine
@@ -43,6 +44,8 @@ class Engine {
         Engine(sf::Texture& texture, unsigned int image_width, double aspect_ratio,
                int samples_per_pixel = 50,
                int max_depth = 20);
+
+        void saveXmlDocument(char* filename) const;
 
         void createImage();
 
@@ -91,7 +94,15 @@ Engine::Engine(sf::Texture& texture, unsigned int image_width, unsigned int imag
                int max_depth) :
     texture(texture), img_width(image_width), img_height(image_height), pixels(img_width*img_height*4),
     samples_per_pixel(samples_per_pixel), aspect_ratio(img_width / img_height), max_depth(max_depth)  {
+        point3 lookfrom(13,2,3);
+        point3 lookat(0,0,0);
         
+        vec3 vup(0,1,0);
+        
+        auto dist_to_focus = 10.0;
+        auto aperture = 0.1;
+
+        cam = camera(lookfrom, lookat, vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
         world = random_scene();
     }
 
@@ -100,9 +111,39 @@ Engine::Engine(sf::Texture& texture, unsigned int image_width, double aspect_rat
                int max_depth) :
     texture(texture), img_width(image_width), img_height(img_width/aspect_ratio), pixels(img_width*img_height*4),
     samples_per_pixel(samples_per_pixel), aspect_ratio(aspect_ratio), max_depth(max_depth) {
+        point3 lookfrom(13,2,3);
+        point3 lookat(0,0,0);
+        
+        vec3 vup(0,1,0);
+        
+        auto dist_to_focus = 10.0;
+        auto aperture = 0.1;
 
+        cam = camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
         world = random_scene();
     }
+
+void Engine::saveXmlDocument(char* filename) const{
+    tinyxml2::XMLDocument xmlDoc;
+
+    tinyxml2::XMLNode * pRoot = xmlDoc.NewElement("Root");
+    xmlDoc.InsertFirstChild(pRoot);
+
+    tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Engine");
+
+    pElement->SetAttribute("ImgWidth", img_width);
+    pElement->SetAttribute("ImgHeight", img_height);
+    pElement->SetAttribute("SamplesPerPixel", samples_per_pixel);
+    pElement->SetAttribute("AspectRatio", aspect_ratio);
+    pElement->SetAttribute("MaxDepth", max_depth);
+
+    pElement->InsertEndChild(cam.to_xml(xmlDoc));
+    pRoot->InsertEndChild(pElement);
+
+    pRoot->InsertEndChild(world.to_xml(xmlDoc));
+
+    xmlDoc.SaveFile(filename);
+}
 
 // Return color of a ray
 color ray_color(const ray& r, const hittable& world, int depth) {
@@ -130,16 +171,18 @@ void Engine::createImage()
     // Camera
 
     //~ camera cam(point3(-2,2,1), point3(0,0,-1), vec3(0,1,0), 20, aspect_ratio);
-	point3 lookfrom(13,2,3);
-    point3 lookat(0,0,0);
+	// point3 lookfrom(13,2,3);
+    // point3 lookat(0,0,0);
     
-	vec3 vup(0,1,0);
+	// vec3 vup(0,1,0);
 	
-	auto dist_to_focus = 10.0;
-    auto aperture = 0.1;
+	// auto dist_to_focus = 10.0;
+    // auto aperture = 0.1;
 
-    camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
-		
+    // cam = camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+	
+    saveXmlDocument("Teste.xml");
+
 	// Render
     if (changed) {
           // Render

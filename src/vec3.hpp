@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <random>
+#include "../include/tinyxml2.h"
 
 #include "rt.hpp"
 
@@ -68,6 +69,12 @@ class vec3
 			// Return true if the vector is close to zero in all dimensions.
 			const auto s = 1e-8;
 			return (fabs(e[0]) < s) && (fabs(e[1]) < s) && (fabs(e[2]) < s);
+		}
+
+		void to_xml(tinyxml2::XMLElement * pElement) const {
+			pElement->SetAttribute("x", x());
+			pElement->SetAttribute("y", y());
+			pElement->SetAttribute("z", z());
 		}
 		
 	public: // il y avait a priori une faute dans le pdf donc j'ai modifié le "public" en "private" -> en fait non
