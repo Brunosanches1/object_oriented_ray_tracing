@@ -46,6 +46,48 @@ class camera {
             //~ lower_left_corner = origin - horizontal/2 - vertical/2 - vec3(0, 0, focal_length);
         }
 
+        camera(tinyxml2::XMLElement * pElement) {
+            lens_radius = pElement->DoubleAttribute("LensRadius");
+            time0 = pElement->DoubleAttribute("Time0");
+            time1 = pElement->DoubleAttribute("Time1");
+
+            tinyxml2::XMLElement * pOriginElement = pElement->FirstChildElement("Origin");
+            if (pOriginElement == nullptr) throw std::invalid_argument("Camera Element does not have a Origin element");
+
+            origin = vec3(pOriginElement);
+
+            tinyxml2::XMLElement * pLowerLeftCornerElement = pElement->FirstChildElement("LowerLeftCorner");
+            if (pLowerLeftCornerElement == nullptr) throw std::invalid_argument("Camera Element does not have a LowerLeftCorner element");
+
+            lower_left_corner = vec3(pLowerLeftCornerElement);
+
+            tinyxml2::XMLElement * pHorizontalElement = pElement->FirstChildElement("Horizontal");
+            if (pHorizontalElement == nullptr) throw std::invalid_argument("Camera Element does not have a Horizontal element");
+
+            horizontal = vec3(pHorizontalElement);
+
+            tinyxml2::XMLElement * pVerticalElement = pElement->FirstChildElement("Vertical");
+            if (pVerticalElement == nullptr) throw std::invalid_argument("Camera Element does not have a Vertical element");
+
+            vertical = vec3(pVerticalElement);
+
+            tinyxml2::XMLElement * pUElement = pElement->FirstChildElement("U");
+            if (pUElement == nullptr) throw std::invalid_argument("Camera Element does not have a U element");
+
+            u = vec3(pUElement);
+
+            tinyxml2::XMLElement * pVElement = pElement->FirstChildElement("V");
+            if (pVElement == nullptr) throw std::invalid_argument("Camera Element does not have a V element");
+
+            v = vec3(pVElement);
+
+            tinyxml2::XMLElement * pWElement = pElement->FirstChildElement("W");
+            if (pWElement == nullptr) throw std::invalid_argument("Camera Element does not have a W element");
+
+            w = vec3(pWElement);
+
+        }
+
         ray get_ray(double s, double t) const {
             vec3 rd = lens_radius * random_in_unit_disk();
             vec3 offset = u * rd.x() + v * rd.y();

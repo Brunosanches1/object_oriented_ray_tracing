@@ -18,7 +18,7 @@
 
 class Engine {
     private:
-        sf::Texture& texture;
+        sf::Texture texture;
 
         int img_width;
         int img_height;  
@@ -32,18 +32,19 @@ class Engine {
         camera cam;
 
     public:
-        // Obligate programmer to pass parameters in order to create the engine
-        Engine() = delete;
+        Engine();
 
         Engine(const Engine&);
 
-        Engine(sf::Texture& texture, unsigned int image_width, unsigned int image_height, 
+        Engine(unsigned int image_width, unsigned int image_height, 
                int samples_per_pixel = 50,
                int max_depth = 20);
 
-        Engine(sf::Texture& texture, unsigned int image_width, double aspect_ratio,
+        Engine(unsigned int image_width, double aspect_ratio = 1.2,
                int samples_per_pixel = 50,
                int max_depth = 20);
+
+        Engine(char* xml_filename);
 
         void saveXmlDocument(char* filename) const;
 
@@ -86,14 +87,17 @@ class Engine {
             changed = true;
         }
 
+        sf::Texture& getTexture() { return texture; }
+        int getImgWidth() { return img_width; }
+        int getImgHeight() { return img_height; }
+
 };
 
-
-Engine::Engine(sf::Texture& texture, unsigned int image_width, unsigned int image_height, 
-               int samples_per_pixel,
-               int max_depth) :
-    texture(texture), img_width(image_width), img_height(image_height), pixels(img_width*img_height*4),
-    samples_per_pixel(samples_per_pixel), aspect_ratio(img_width / img_height), max_depth(max_depth)  {
+Engine::Engine() : img_width(480), img_height(400), pixels(4*img_width*img_height),
+    samples_per_pixel(100), max_depth(50) {
+        texture = sf::Texture();
+        texture.create(img_width, img_height);
+        aspect_ratio = (double) img_width/img_height;
         point3 lookfrom(13,2,3);
         point3 lookat(0,0,0);
         
@@ -106,11 +110,33 @@ Engine::Engine(sf::Texture& texture, unsigned int image_width, unsigned int imag
         world = random_scene();
     }
 
-Engine::Engine(sf::Texture& texture, unsigned int image_width, double aspect_ratio, 
+Engine::Engine(unsigned int image_width, unsigned int image_height, 
                int samples_per_pixel,
                int max_depth) :
-    texture(texture), img_width(image_width), img_height(img_width/aspect_ratio), pixels(img_width*img_height*4),
+    img_width(image_width), img_height(image_height), pixels(img_width*img_height*4),
+    samples_per_pixel(samples_per_pixel), aspect_ratio(img_width / img_height), max_depth(max_depth)  {
+
+        texture = sf::Texture();
+        texture.create(img_width, img_height);
+        point3 lookfrom(13,2,3);
+        point3 lookat(0,0,0);
+        
+        vec3 vup(0,1,0);
+        
+        auto dist_to_focus = 10.0;
+        auto aperture = 0.1;
+
+        cam = camera(lookfrom, lookat, vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+        world = random_scene();
+    }
+
+Engine::Engine(unsigned int image_width, double aspect_ratio, 
+               int samples_per_pixel,
+               int max_depth) :
+    img_width(image_width), img_height(img_width/aspect_ratio), pixels(img_width*img_height*4),
     samples_per_pixel(samples_per_pixel), aspect_ratio(aspect_ratio), max_depth(max_depth) {
+        texture = sf::Texture();
+        texture.create(img_width, img_height);
         point3 lookfrom(13,2,3);
         point3 lookat(0,0,0);
         
@@ -122,6 +148,40 @@ Engine::Engine(sf::Texture& texture, unsigned int image_width, double aspect_rat
         cam = camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
         world = random_scene();
     }
+
+Engine::Engine(char* filename) {
+    tinyxml2::XMLDocument xmlDoc;
+
+    tinyxml2::XMLError eResult = xmlDoc.LoadFile(filename);
+    XMLCheckResult(eResult);
+
+    tinyxml2::XMLNode * pRoot = xmlDoc.FirstChild();
+    if (pRoot == nullptr) throw std::invalid_argument("File does not contain a root element");
+
+    tinyxml2::XMLElement * pElement = pRoot->FirstChildElement("Engine");
+    if (pElement == nullptr) throw std::invalid_argument("File does not contain an engine element");
+
+    img_width = pElement->IntAttribute("ImgWidth");
+    img_height = pElement->IntAttribute("ImgHeight");
+    samples_per_pixel = pElement->IntAttribute("SamplesPerPixel");
+    aspect_ratio = pElement->DoubleAttribute("AspectRatio");
+    max_depth = pElement->IntAttribute("MaxDepth");
+
+    pixels = std::vector<sf::Uint8>(4*img_width*img_height);
+    texture = sf::Texture();
+    texture.create(img_width, img_height);
+
+    tinyxml2::XMLElement * pCameraElement = pElement->FirstChildElement("Camera");
+    if (pCameraElement == nullptr) throw std::invalid_argument("File does not contain a camera element");
+
+    cam = camera(pCameraElement);
+
+    tinyxml2::XMLElement * pListElement = pRoot->FirstChildElement("List");
+    if (pListElement == nullptr) throw std::invalid_argument("File does not contain a list element");
+
+    world = hittable_list(pListElement);
+
+}
 
 void Engine::saveXmlDocument(char* filename) const{
     tinyxml2::XMLDocument xmlDoc;
@@ -181,7 +241,7 @@ void Engine::createImage()
 
     // cam = camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 	
-    saveXmlDocument("Teste.xml");
+    //saveXmlDocument("data/RandomWorld.xml");
 
 	// Render
     if (changed) {
@@ -192,14 +252,11 @@ void Engine::createImage()
         std::cout << "P3\n" << img_width << ' ' << img_height
          << "\n255\n";
 
-        #pragma omp parallel for schedule(dynamic)
+        
         for (int j = img_height-1; j >= 0; --j) {
-
-            auto tid = omp_get_thread_num();
-            if(tid == 0) {
-                std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush; 
-            }
-
+            std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush; 
+            
+            #pragma omp parallel for schedule(dynamic, 20)
             for (int i = 0; i < img_width; ++i) {
                 color pixel_color(0, 0, 0);
                 for (int s = 0; s < samples_per_pixel; ++s) {

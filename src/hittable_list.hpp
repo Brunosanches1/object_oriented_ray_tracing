@@ -27,6 +27,7 @@ class hittable_list : public hittable {
         hittable_list() {}  
         hittable_list(shared_ptr<hittable> object) { add(object); }
         hittable_list(const char* xml_filename);
+        hittable_list(tinyxml2::XMLElement * pElement);
 
         void clear() { objects.clear(); }
         void add(shared_ptr<hittable> object) { objects.push_back(object); }
@@ -89,31 +90,19 @@ tinyxml2::XMLElement* hittable_list::to_xml(tinyxml2::XMLDocument& xmlDoc) const
     return pElement;
 }
 
-void hittable_list::saveXmlDocument(char* filename) {
-    tinyxml2::XMLDocument xmlDoc;
+// void hittable_list::saveXmlDocument(char* filename) {
+//     tinyxml2::XMLDocument xmlDoc;
 
-    tinyxml2::XMLNode * pRoot = xmlDoc.NewElement("Root");
+//     tinyxml2::XMLNode * pRoot = xmlDoc.NewElement("Root");
 
-    xmlDoc.InsertFirstChild(pRoot);
+//     xmlDoc.InsertFirstChild(pRoot);
 
-    pRoot->InsertEndChild(to_xml(xmlDoc));
+//     pRoot->InsertEndChild(to_xml(xmlDoc));
 
-    xmlDoc.SaveFile(filename);
-}
+//     xmlDoc.SaveFile(filename);
+// }
 
-
-hittable_list::hittable_list(const char* xml_filename) {
-    tinyxml2::XMLDocument xmlDoc;
-
-    tinyxml2::XMLError eResult = xmlDoc.LoadFile(xml_filename);
-    XMLCheckResult(eResult);
-
-    tinyxml2::XMLNode * pRoot = xmlDoc.FirstChild();
-    if (pRoot == nullptr) throw std::invalid_argument("File does not contain a root element");
-
-    tinyxml2::XMLElement * pElement = pRoot->FirstChildElement("List");
-    if (pElement == nullptr) throw std::invalid_argument("File does not contain a list element");
-
+hittable_list::hittable_list(tinyxml2::XMLElement * pElement) {
     tinyxml2::XMLElement * pListElement = pElement->FirstChildElement();
     while (pListElement != nullptr)
     {
@@ -129,8 +118,37 @@ hittable_list::hittable_list(const char* xml_filename) {
 
         pListElement = pListElement->NextSiblingElement();
     }
-
 }
+
+// hittable_list::hittable_list(const char* xml_filename) {
+//     tinyxml2::XMLDocument xmlDoc;
+
+//     tinyxml2::XMLError eResult = xmlDoc.LoadFile(xml_filename);
+//     XMLCheckResult(eResult);
+
+//     tinyxml2::XMLNode * pRoot = xmlDoc.FirstChild();
+//     if (pRoot == nullptr) throw std::invalid_argument("File does not contain a root element");
+
+//     tinyxml2::XMLElement * pElement = pRoot->FirstChildElement("List");
+//     if (pElement == nullptr) throw std::invalid_argument("File does not contain a list element");
+
+//     tinyxml2::XMLElement * pListElement = pElement->FirstChildElement();
+//     while (pListElement != nullptr)
+//     {
+//         if (strcmp(pListElement->Name(), "Sphere") == 0) {
+//             objects.push_back(make_shared<sphere>(pListElement));
+//         }
+//         else if (strcmp(pListElement->Name(), "Moving_Sphere") == 0) {
+//             objects.push_back(make_shared<moving_sphere>(pListElement));
+//         }
+//         else {
+//             throw std::invalid_argument("Object not defined or list inside list");
+//         }
+
+//         pListElement = pListElement->NextSiblingElement();
+//     }
+
+// }
 
 hittable_list random_scene() {
     hittable_list world;
@@ -146,14 +164,15 @@ hittable_list random_scene() {
             if ((center - point3(4, 0.2, 0)).length() > 0.9) {
                 shared_ptr<material> sphere_material;
 
-                if (choose_mat < 0.8) {
+                if (choose_mat < 0.33) {
                     // diffuse
                     auto albedo = color::random() * color::random();
                     sphere_material = make_shared<lambertian>(albedo);
                     auto center2 = center + vec3(0, random_double(0,.5), 0);
-                    world.add(make_shared<moving_sphere>(
-                        center, center2, 0.0, 1.0, 0.2, sphere_material));
-                } else if (choose_mat < 0.95) {
+                    // world.add(make_shared<moving_sphere>(
+                        // center, center2, 0.0, 1.0, 0.2, sphere_material));
+                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
+                } else if (choose_mat < 0.66) {
                     // metal
                     auto albedo = color::random(0.5, 1);
                     auto fuzz = random_double(0, 0.5);
@@ -177,7 +196,6 @@ hittable_list random_scene() {
     auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
     world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
 
-    world.saveXmlDocument("RandomWorld.xml");
     return world;
 }
 
