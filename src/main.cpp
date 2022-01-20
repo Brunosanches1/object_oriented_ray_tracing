@@ -10,6 +10,7 @@
 #include "Gui/Menu.hpp"
 #include "Gui/Theme.hpp"
 #include "Gui/Gui.hpp"
+#include <ncurses.h>
 
 auto aspect_ratio = 3.0 / 2.0;
 unsigned int image_width = 400;
@@ -26,7 +27,7 @@ int main(int argc, char *argv[])
             if (strncmp(argv[i], "--from=", 7) == 0) {
                 strcpy(file_from, argv[i]+7);
                 has_origin_file = true;
-                std::cout << "Geting file from " << argv[i]+7 << std::endl;
+                // std::cout << "Geting file from " << argv[i]+7 << std::endl;
             }
             else if (strncmp(argv[i], "--to=", 5) == 0) {
                 strcpy(file_to, argv[i]+5);
@@ -38,6 +39,9 @@ int main(int argc, char *argv[])
             }
         }
     } 
+    initscr();			/* Start curses mode 		  */
+	printw("Hello World !!!");	/* Print Hello World		  */
+	refresh();			/* Print it on to the real screen */
 
     XInitThreads();
     
@@ -92,12 +96,16 @@ int main(int argc, char *argv[])
     }
 
     if (has_dest_file) {
-        std::cout << "Saving file to " << file_to << std::endl;
+        // std::cout << "Saving file to " << file_to << std::endl;
         rtEngine.saveXmlDocument(file_to);
     }
     if (save_image) {
-        std::cout << "Saving image to " << file_image_to << std::endl;
+        // std::cout << "Saving image to " << file_image_to << std::endl;
         rtEngine.getTexture().copyToImage().saveToFile(file_image_to);
     }
+
+    
+	getch();			/* Wait for user input */
+	endwin();			/* End curses mode		  */
     return 0;
 }

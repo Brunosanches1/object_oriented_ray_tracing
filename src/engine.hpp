@@ -249,14 +249,14 @@ void Engine::createImage()
 	    [[gnu::unused]] // pour spécifier que s ne sera pas utilisé
 	    int s; // pour que omp reconnaisse s en private
         pixels.clear();
-        std::cout << "P3\n" << img_width << ' ' << img_height
-         << "\n255\n";
+        // std::cout << "P3\n" << img_width << ' ' << img_height
+        //  << "\n255\n";
 
         
         for (int j = img_height-1; j >= 0; --j) {
-            std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush; 
+            // std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush; 
             
-            #pragma omp parallel for schedule(dynamic, 20)
+            #pragma omp parallel for schedule(dynamic, 10)
             for (int i = 0; i < img_width; ++i) {
                 color pixel_color(0, 0, 0);
                 for (int s = 0; s < samples_per_pixel; ++s) {

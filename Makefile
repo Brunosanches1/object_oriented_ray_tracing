@@ -8,10 +8,10 @@ SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o) 
 
 CXX = g++
-CPPFLAGS := -MMD -MP -fopenmp
+CPPFLAGS := -MMD -MP -fopenmp -lncurses
 CXXFLAGS   := -Wall -O2 -std=c++14  -g
 LDFLAGS  := -L./lib -Linclude -Iinclude/sfml-widgets-master/src
-LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -fopenmp lib/libsfml-widgets.a
+LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -lncurses -fopenmp lib/libsfml-widgets.a
 
 .PHONY: all clean
 
@@ -30,7 +30,7 @@ clean:
 	@$(RM) -rv $(BIN_DIR) $(OBJ_DIR)
 
 install:
-	sudo apt-get install libsfml-dev
+	sudo apt-get install libsfml-dev libncurses-dev
 	cd include/sfml-widgets-master && make
 	mkdir -p lib/
 	cp include/sfml-widgets-master/lib/libsfml-widgets.a lib/libsfml-widgets.a
