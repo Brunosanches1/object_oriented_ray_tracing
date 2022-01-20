@@ -10,12 +10,11 @@
 #include "Gui/Menu.hpp"
 #include "Gui/Theme.hpp"
 #include "Gui/Gui.hpp"
-#include <ncurses.h>
+#include "terminal_gui.hpp"
 
 auto aspect_ratio = 3.0 / 2.0;
 unsigned int image_width = 400;
 unsigned int image_height = static_cast<unsigned int>(image_width / aspect_ratio); 
-
 
 int main(int argc, char *argv[])
 { 
@@ -39,9 +38,7 @@ int main(int argc, char *argv[])
             }
         }
     } 
-    initscr();			/* Start curses mode 		  */
-	printw("Hello World !!!");	/* Print Hello World		  */
-	refresh();			/* Print it on to the real screen */
+    
 
     XInitThreads();
     
@@ -60,6 +57,9 @@ int main(int argc, char *argv[])
 
     sf::VideoMode videomode(rtEngine.getImgWidth(), rtEngine.getImgHeight());
     sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default);
+
+    termGui::init(window, rtEngine);
+    //std::thread tGui(termGui::main_ncurses, std::ref(window), std::ref(rtEngine));
 
     // // Create the main window
     // sf::RenderWindow app(sf::VideoMode(640, 480), "SFML Widgets", sf::Style::Close);
@@ -104,8 +104,7 @@ int main(int argc, char *argv[])
         rtEngine.getTexture().copyToImage().saveToFile(file_image_to);
     }
 
-    
-	getch();			/* Wait for user input */
-	endwin();			/* End curses mode		  */
+    termGui::close();
+
     return 0;
 }

@@ -169,9 +169,9 @@ hittable_list random_scene() {
                     auto albedo = color::random() * color::random();
                     sphere_material = make_shared<lambertian>(albedo);
                     auto center2 = center + vec3(0, random_double(0,.5), 0);
-                    // world.add(make_shared<moving_sphere>(
-                        // center, center2, 0.0, 1.0, 0.2, sphere_material));
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
+                    world.add(make_shared<moving_sphere>(
+                        center, center2, 0.0, 1.0, 0.2, sphere_material));
+                    // world.add(make_shared<sphere>(center, 0.2, sphere_material));
                 } else if (choose_mat < 0.66) {
                     // metal
                     auto albedo = color::random(0.5, 1);
