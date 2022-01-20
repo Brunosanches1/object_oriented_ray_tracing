@@ -39,7 +39,6 @@ int main(int argc, char *argv[])
         }
     } 
     
-
     XInitThreads();
     
     // window.setActive(false);

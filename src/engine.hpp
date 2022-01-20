@@ -3,6 +3,7 @@
 #include <iostream>
 #include <omp.h>
 #include <vector>
+#include <chrono>
 
 
 #ifndef ENGINE_HPP
@@ -30,6 +31,11 @@ class Engine {
         int max_depth;
         hittable_list world;
         camera cam;
+        
+        /* variables to enable progress bar */
+        bool working = false;
+        int remaining_lines = 0;
+        std::chrono::time_point<std::chrono::steady_clock> start_time;
 
     public:
         Engine();
@@ -87,9 +93,15 @@ class Engine {
             changed = true;
         }
 
+        
         sf::Texture& getTexture() { return texture; }
         int getImgWidth() { return img_width; }
         int getImgHeight() { return img_height; }
+
+        /* Progress bar useful methods */
+        bool isWorking() { return working; }
+        std::chrono::time_point<std::chrono::steady_clock> workStartTime() { return start_time; }
+        int getRemainingLines() { return remaining_lines; }
 
 };
 
@@ -252,10 +264,11 @@ void Engine::createImage()
         // std::cout << "P3\n" << img_width << ' ' << img_height
         //  << "\n255\n";
 
-        
+        working = true;
+        start_time = std::chrono::steady_clock::now();
         for (int j = img_height-1; j >= 0; --j) {
             // std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush; 
-            
+            remaining_lines = j;
             #pragma omp parallel for schedule(dynamic, 10)
             for (int i = 0; i < img_width; ++i) {
                 color pixel_color(0, 0, 0);
@@ -268,6 +281,7 @@ void Engine::createImage()
                 write_color(pixels, pixel_color, samples_per_pixel, (img_height-1) - j, i, img_width);
             }
         }
+        working = false;
         changed=false;
     }
 	
