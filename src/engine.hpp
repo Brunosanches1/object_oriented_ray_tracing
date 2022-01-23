@@ -25,12 +25,12 @@ class Engine {
         int img_height;  
         //VectorStream<sf::Uint8> pixels;
         std::vector<sf::Uint8> pixels;
-        int changed = true;
         int samples_per_pixel;
         double aspect_ratio;
         int max_depth;
         hittable_list world;
         camera cam;
+        bool has_image=false;
         
         /* variables to enable progress bar */
         bool working = false;
@@ -50,9 +50,9 @@ class Engine {
                int samples_per_pixel = 50,
                int max_depth = 20);
 
-        Engine(char* xml_filename);
+        Engine(const char* xml_filename);
 
-        void saveXmlDocument(char* filename) const;
+        void saveXmlDocument(const char* filename) const;
 
         void createImage();
 
@@ -67,33 +67,32 @@ class Engine {
 
         void setSamplesPerPixel(int value) {
             samples_per_pixel = value;
-            changed = true;
         }
 
         void setMaxDepth(int value) {
             max_depth = value;
-            changed = true;
         }
 
         void setAspectRatio(double value) {
             aspect_ratio = value;
             img_height = static_cast<int>(img_width / aspect_ratio);
-            changed = true;
         }
 
         void setImageWidth(int value) {
             img_width = value;
             aspect_ratio = static_cast<double>(img_width / img_height);
-            changed = true;
         }
 
         void setImageHeight(int value) {
             img_height = value;
             aspect_ratio = static_cast<double>(img_width / img_height);
-            changed = true;
         }
 
-        
+        void setToWork() {
+            working = true;
+        }
+
+        bool hasImageReady() { return has_image; }
         sf::Texture& getTexture() { return texture; }
         int getImgWidth() { return img_width; }
         int getImgHeight() { return img_height; }
@@ -161,11 +160,11 @@ Engine::Engine(unsigned int image_width, double aspect_ratio,
         world = random_scene();
     }
 
-Engine::Engine(char* filename) {
+Engine::Engine(const char* filename) {
     tinyxml2::XMLDocument xmlDoc;
 
     tinyxml2::XMLError eResult = xmlDoc.LoadFile(filename);
-    XMLCheckResult(eResult);
+    //XMLCheckResult(eResult);
 
     tinyxml2::XMLNode * pRoot = xmlDoc.FirstChild();
     if (pRoot == nullptr) throw std::invalid_argument("File does not contain a root element");
@@ -195,7 +194,7 @@ Engine::Engine(char* filename) {
 
 }
 
-void Engine::saveXmlDocument(char* filename) const{
+void Engine::saveXmlDocument(const char* filename) const{
     tinyxml2::XMLDocument xmlDoc;
 
     tinyxml2::XMLNode * pRoot = xmlDoc.NewElement("Root");
@@ -256,15 +255,15 @@ void Engine::createImage()
     //saveXmlDocument("data/RandomWorld.xml");
 
 	// Render
-    if (changed) {
-          // Render
-	    [[gnu::unused]] // pour spécifier que s ne sera pas utilisé
-	    int s; // pour que omp reconnaisse s en private
+    if (working) {
+        // Render
+        [[gnu::unused]] // pour spécifier que s ne sera pas utilisé
+        int s; // pour que omp reconnaisse s en private
         pixels.clear();
         // std::cout << "P3\n" << img_width << ' ' << img_height
         //  << "\n255\n";
 
-        working = true;
+        // working = true;
         start_time = std::chrono::steady_clock::now();
         for (int j = img_height-1; j >= 0; --j) {
             // std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush; 
@@ -282,7 +281,8 @@ void Engine::createImage()
             }
         }
         working = false;
-        changed=false;
+        has_image = true;
+        // work=false;
     }
 	
 }

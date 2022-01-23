@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
     sf::Sprite sprite(rtEngine.getTexture());
 
     sf::VideoMode videomode(rtEngine.getImgWidth(), rtEngine.getImgHeight());
-    sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default);
+    sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default & (~sf::Style::Close));
+    window.setVisible(false);
 
     termGui::init(window, rtEngine);
     //std::thread tGui(termGui::main_ncurses, std::ref(window), std::ref(rtEngine));
@@ -71,28 +72,29 @@ int main(int argc, char *argv[])
     // text.setPosition(320, 360);
 
     // run the program as long as the window is open
-    while (window.isOpen())
+    while (!termGui::timeToClose)
     {
         // check all the window's events that were triggered since the last iteration of the loop
         sf::Event event;
         while (window.pollEvent(event))
         {
-            // "close requested" event: we close the window
+            // "close requested" event: oculting the window
             if (event.type == sf::Event::Closed) {
-                window.close();
-                // app.close();
+                // window.close();
+                window.setVisible(false);
             }
-
-            // window.clear();
-            // rtEngine.renderImage();
-            // window.draw(sprite);
-            // window.display();
         }
-        window.clear();
-        rtEngine.renderImage();
-        window.draw(sprite);
-        window.display();
+        
+        if (rtEngine.isWorking()) {
+            window.clear();
+            window.setVisible(false);
+            rtEngine.renderImage();
+            window.setVisible(true);
+            window.draw(sprite);
+            window.display();
+        }
     }
+    window.close();
 
     if (has_dest_file) {
         // std::cout << "Saving file to " << file_to << std::endl;
@@ -104,6 +106,7 @@ int main(int argc, char *argv[])
     }
 
     termGui::close();
+    
 
     return 0;
 }
