@@ -15,159 +15,253 @@
 #define TERMINAL_GUI
 
 namespace termGui {
-    std::thread tGui;
-    bool timeToClose = false;
+    class term {
 
-    /* Init the ncurses terminal and set thread */
-    void init(sf::RenderWindow&, Engine&);
+        public:
+            /* Constructor */
+            term(sf::RenderWindow&, Engine&);
 
-    /* Define main terminal window */
-    void main_ncurses(sf::RenderWindow&, Engine&);
+            /* Init the ncurses terminal and set thread */
+            void init();
 
-    /* Join thread */
-    void close();
+            /* Join thread */
+            void close();
 
-    /* Update progress bar if the engine is working */
-    void updateProgressBar(Engine&, WINDOW*);
+            /* Return true if user demanded closing the application*/
+            bool isTimeToClose();
 
-    void updateProgressBar(Engine& rtEngine, WINDOW* win) {
+        private:
+            std::thread tGui;
+            bool timeToClose = false;
+            sf::RenderWindow& rtWindow;
+            Engine& rtEngine;
+            WINDOW* progressBarWindow, *headerWindow, *inputWin, *optWin;
+
+             /* Define main terminal window */
+            void main_ncurses();
+
+            /* Update progress bar if the engine is working */
+            void updateProgressBar();
+
+            /* Create header*/
+            void initHeaderWindow();
+            
+            /* Print options for the user */
+            void initOptWin();
+
+            /* Get input from the user as a string*/
+            std::string getParameter(int line);
+
+            /* Create a filename window and get input */
+            std::string getFilename();
+            
+            /* Get input as a double*/
+            double getDoubleParameter(int line);
+
+            /* Get Input as an int*/
+            int getIntParameter(int line);
+
+            /* Get Input as a Point3 (eg. Vec3 or Color)*/
+            point3 getPoint3Parameter(int line);
+
+            /* Get a XML file and initialize the Ray Tracing Engine from it */
+            void recoverXML();
+
+            /* Save the current Ray Tracing Engine to a XML file that can be recharged */
+            void saveXML();
+
+            /* Save the rendered scene to an image*/
+            void saveImage();
+
+            /* Create a scene with all parameters as user inputs */
+            void newScene();
+
+            /* Create a moving sphere pointer with the user's inputs*/
+            std::shared_ptr<moving_sphere> createMovingSphere(int line);
+
+            /* Create a sphere pointer with user's input*/
+            std::shared_ptr<sphere> createSphere(int line);
+
+            /* Create a material pointer with user's input*/
+            std::shared_ptr<material> selectMaterial(int line);
+            
+    };
+
+    term::term(sf::RenderWindow& window, Engine& engine) : rtWindow(window), rtEngine(engine), progressBarWindow(), headerWindow(), optWin() {}
+
+    void term::init() {
+        tGui = std::thread(&term::main_ncurses, this);
+    }
+
+    void term::close() {
+        tGui.join();
+    }
+
+    bool term::isTimeToClose() { return timeToClose; }
+
+    void term::main_ncurses() {
+        initscr();			/* Start curses mode 		  */
+        erase();            /* clear entire screen */
+        // raw();
+        cbreak();
+        noecho();           /* Disable echoing */
+        /* Construct header*/
+        auto height = 7;
+        auto width = 54;
+        // auto startx = (COLS - width) / 2;
+        auto startx = 0;
+        auto starty = 0;
+        headerWindow = newwin(height, width, starty, startx);
+        initHeaderWindow();
+        // refresh();			/* Print it on to the real screen */
+
+        /* Construct input window */
+        height = 0;
+        width = 20;
+        startx = 0;
+        starty = (LINES -1);
+        inputWin = newwin(height, width, starty, startx);
+
+        /* Construct options window */
+        height = 30;
+        width = 61;
+        startx = 0;
+        starty = 10;
+        optWin = newwin(height, width, starty, startx);
+
+        /* Construct progress bar window */
+        height = 2;
+        width = 61;
+        // startx = (COLS - width) / 2;
+        startx = 0;
+        starty = (LINES - 2);
+        progressBarWindow = newwin(height, width, starty, startx);
+
+        sf::Sprite sprite(rtEngine.getTexture());
+
+        while(!timeToClose) {
+            if (rtEngine.isWorking()) {
+                updateProgressBar();
+                // window.setVisible(false);
+            }
+            else {
+                wclear(progressBarWindow);
+                wrefresh(progressBarWindow);
+
+                initOptWin();
+            }
+        };
+        endwin();			/* End curses mode		  */
+    }   
+
+    void term::updateProgressBar() {
         double progress = (double) (rtEngine.getImgHeight() - rtEngine.getRemainingLines()) / rtEngine.getImgHeight() * 100.0;
         auto end_time = std::chrono::steady_clock::now();
         std::chrono::duration<double> diff = end_time - rtEngine.workStartTime();
 
         double time_to_finish = (diff.count() / (rtEngine.getImgHeight() - rtEngine.getRemainingLines())) * 
                                     rtEngine.getRemainingLines();
-        // wclear(win);
-        werase(win);
-        wmove(win, 0, 0);
-        wprintw(win, "[Elapsed time %7.1lf s]  [Remaining time %7.1lf s]\n", diff, time_to_finish);
-        // mvwprintw(win, 0, 0, "[Elapsed time %7.1lf s]   [Remaining time %7.1lf s]\n", diff, time_to_finish);
-        // wclrtoeol(win);
-        wprintw(win, "[");
+
+        werase(progressBarWindow);
+        wmove(progressBarWindow, 0, 0);
+        wprintw(progressBarWindow, "[Elapsed time %7.1lf s]  [Remaining time %7.1lf s]\n", diff, time_to_finish);
+        wprintw(progressBarWindow, "[");
         for (auto i = 2; i <= progress; i += 2){
-            // mvwprintw(win, 1, (i / 2)+1, "#");
-            wprintw(win, "#");
+            wprintw(progressBarWindow, "#");
         }
-        // for (auto i = 98; i >= progress; i -= 2) {
-        //     mvwprintw(win, 2, (i / 2) +1, " ");
-        // }
-        mvwprintw(win, 1, 51, "] %5.1lf %%", progress);
-        wrefresh(win);
-
-
+        mvwprintw(progressBarWindow, 1, 51, "] %5.1lf %%", progress);
+        wrefresh(progressBarWindow);
     }
 
-    void init(sf::RenderWindow& window, Engine& rtEngine) {
-        tGui = std::thread(main_ncurses, std::ref(window), std::ref(rtEngine));
+    void term::initHeaderWindow() {
+        werase(headerWindow);
+        wmove(headerWindow, 0, 0);
+        wprintw(headerWindow, "//////////////////////////////////////////////////////");
+        wprintw(headerWindow, "/              IN204 Project - Ray Tracer            /");
+        wprintw(headerWindow, "/                                                    /");
+        wprintw(headerWindow, "/             Authors: MACEDO SANCHES Bruno          /");
+        wprintw(headerWindow, "/                OLIVEIRA DA SILVA Alexis            /");
+        wprintw(headerWindow, "/                                                    /");
+        wprintw(headerWindow, "//////////////////////////////////////////////////////");
+        wrefresh(headerWindow);
     }
 
-    void close() {
-        tGui.join();
-    }
-
-    void initHeaderWindow(WINDOW* win) {
-        werase(win);
-        wmove(win, 0, 0);
-        wprintw(win, "//////////////////////////////////////////////////////");
-        wprintw(win, "/              IN204 Project - Ray Tracer            /");
-        wprintw(win, "/                                                    /");
-        wprintw(win, "/             Authors: MACEDO SANCHES Bruno          /");
-        wprintw(win, "/                OLIVEIRA DA SILVA Alexis            /");
-        wprintw(win, "/                                                    /");
-        wprintw(win, "//////////////////////////////////////////////////////");
-        wrefresh(win);
-    }
-
-    void initOptWin(WINDOW* win) {
-        werase(win);
-        wmove(win, 0, 0);
-        wprintw(win, "Press the key indicated to perform an action\n");
-        wprintw(win, "Enter - Render the scene in a window\n");
-        wprintw(win, "c - Create a new scene\n");
-        wprintw(win, "r - Recover scene from a XML file\n");
-        wprintw(win, "p - Load example scene\n");
-        wprintw(win, "s - Save scene in XML format\n");
-        wprintw(win, "i - Save scene in image format\n");
-        wprintw(win, "q - quit\n");
-        wrefresh(win);
-    }
-
-    std::string getFilename(WINDOW* optWin, WINDOW* inputWin) {
+    void term::initOptWin() {
         werase(optWin);
         wmove(optWin, 0, 0);
-        wprintw(optWin, "File path and name:\n");
+        wprintw(optWin, "Press the key indicated to perform an action\n");
+        wprintw(optWin, "Enter - Render the scene in a window\n");
+        wprintw(optWin, "c - Create a new scene\n");
+        wprintw(optWin, "r - Recover scene from a XML file\n");
+        wprintw(optWin, "p - Load example scene\n");
+        wprintw(optWin, "s - Save scene in XML format\n");
+        wprintw(optWin, "i - Save scene in image format\n");
+        wprintw(optWin, "q - quit\n");
         wrefresh(optWin);
-        keypad(inputWin, true);
-        auto c = wgetch(inputWin);
-        std::string filename;
-        while(c != '\n') {
-            if (c == KEY_BACKSPACE || c == KEY_DC || c == 8) {
-                wrefresh(optWin);
-                wmove(optWin, 1, 0);
-                wclrtoeol(optWin);
-                wrefresh(optWin);
-                filename.pop_back();
-            }
-            else {
-                filename.push_back(c);
-            }
-            mvwprintw(optWin, 1, 0, filename.c_str());
-            wrefresh(optWin);
-            c = wgetch(inputWin);
-        }
-        keypad(inputWin, false);
-        return filename;
-    }
 
-    void recoverXML(WINDOW* optWin, WINDOW* inputWin, Engine& rtEngine, sf::RenderWindow& rtWindow) {
-        std::string filename;
-        
-        while(true) {
-            filename = getFilename(optWin, inputWin);
-            try {
-                rtEngine = Engine(filename.c_str());
+        sf::FloatRect visibleArea;
+
+        auto c = wgetch(inputWin);
+        switch(c) {
+            case '\n':
+                rtEngine.setToWork();
+                mvwprintw(optWin, 10, 0, "Working.... wait render to finish before pressing any key");
+                wrefresh(optWin);
                 break;
-            }
-            catch(std::exception& e) {
-                mvwprintw(optWin, 10, 0, "Error while handling file, try again or another file");
-                mvwprintw(optWin, 11, 0, "Press enter to try again");
+            case 'c':
+                newScene();
                 wrefresh(optWin);
-                auto c = wgetch(inputWin);
-                while(c != '\n') {c = wgetch(inputWin); }
-            }
+                break;
+            case 'r':
+                recoverXML();
+                break;
+            case 'p':
+                rtEngine = Engine();
+                visibleArea = sf::FloatRect(0, 0, rtEngine.getImgWidth(), rtEngine.getImgHeight());
+                rtWindow.setView(sf::View(visibleArea));
+                wmove(optWin, 10, 0);
+                wclrtoeol(optWin);
+                wprintw(optWin, "Example scene loaded");
+                mvwprintw(optWin, 11, 0, "Press enter to return");
+                wrefresh(optWin);
+                c = wgetch(inputWin);
+                while(c != '\n') {c = wgetch(inputWin); } 
+                wrefresh(optWin);
+                break;
+            case 's':
+                saveXML();
+                break;
+            case 'i':
+                if (rtEngine.hasImageReady()) {
+                    saveImage();
+                    mvwprintw(optWin, 10, 0, "Image saved");
+                    wrefresh(optWin);
+                }
+                else {
+                    mvwprintw(optWin, 10, 0, "Must render a scene first");
+                    mvwprintw(optWin, 11, 0, "Press enter to return");
+                    wrefresh(optWin);
+                    c = wgetch(inputWin);
+                    while(c != '\n') {c = wgetch(inputWin); }                      
+                }
+                break;
+            case 'q':
+                timeToClose = true;
+                erase();
+                break;
+            default:
+                if(has_colors() == FALSE) {	
+                    start_color();			/* Start color 			*/
+                    init_pair(1, COLOR_RED, COLOR_BLACK);
+                    attron(COLOR_PAIR(1));
+                }
+                    
+                mvwprintw(optWin, 10, 0, "Invalid option!");
+                wrefresh(optWin);
         }
-
-         // update the view to the new size of the window
-        sf::FloatRect visibleArea(0, 0, rtEngine.getImgWidth(), rtEngine.getImgHeight());
-        rtWindow.setView(sf::View(visibleArea));
-        mvwprintw(optWin, 10, 0, "Loaded! Press enter to return");
-        wrefresh(optWin);
-        auto c = wgetch(inputWin);
-        while(c != '\n') {c = wgetch(inputWin); }
-        initOptWin(optWin);
     }
 
-    void saveXML(WINDOW* optWin, WINDOW* inputWin, Engine& rtEngine) {
-        auto filename = getFilename(optWin, inputWin);
-        rtEngine.saveXmlDocument(filename.c_str());
-        mvwprintw(optWin, 10, 0, "Saved! Press enter to return");
-        wrefresh(optWin);
-        auto c = wgetch(inputWin);
-        while(c != '\n') {c = wgetch(inputWin); }
-        initOptWin(optWin);
-    }
-
-    void saveImage(WINDOW* optWin, WINDOW* inputWin, Engine& rtEngine) {
-        auto filename = getFilename(optWin, inputWin);
-        rtEngine.getTexture().copyToImage().saveToFile(filename);
-        mvwprintw(optWin, 10, 0, "Saved! Press enter to return");
-        wrefresh(optWin);
-        auto c = wgetch(inputWin);
-        while(c != '\n') {c = wgetch(inputWin); }
-        initOptWin(optWin);
-    }
-
-    std::string getParameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+    std::string term::getParameter(int line) {
         wmove(optWin, line, 0);
         wclrtoeol(optWin);
         wrefresh(optWin);
@@ -194,11 +288,20 @@ namespace termGui {
         return value;
     }
 
-    double getDoubleParameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+    std::string term::getFilename() {
+        werase(optWin);
+        wmove(optWin, 0, 0);
+        wprintw(optWin, "File path and name:\n");
+        wrefresh(optWin);
+        
+        return getParameter(1);
+    }
+
+    double term::getDoubleParameter(int line) {
         double val;
         while (true) {
             try {
-                std::string s = getParameter(optWin, inputWin, line);
+                std::string s = getParameter(line);
                 val = std::stod(s);
                 break;
             }
@@ -214,11 +317,11 @@ namespace termGui {
         return val;
     }
 
-    int getIntParameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+    int term::getIntParameter(int line) {
         int val;
         while (true) {
             try {
-                std::string s = getParameter(optWin, inputWin, line);
+                std::string s = getParameter(line);
                 val = std::stoi(s);
                 break;
             }
@@ -234,12 +337,12 @@ namespace termGui {
         return val;
     }
 
-    point3 getPoint3Parameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+    point3 term::getPoint3Parameter(int line) {
         point3 val;
         char delimiter = ',';
         while (true) {
             try {
-                std::string s = getParameter(optWin, inputWin, line);
+                std::string s = getParameter(line);
                 int i = 0;
                 for (char c : s) {
                     if (c == ',') i++;
@@ -271,81 +374,52 @@ namespace termGui {
         return val;
     }
 
-    std::shared_ptr<material> selectMaterial(WINDOW* optWin, WINDOW* inputWin, int line) {
-        mvwprintw(optWin, line++, 0, "------- Material Parameters -------");
-        mvwprintw(optWin, line++, 0, "Select a material");
-        mvwprintw(optWin, line++, 0, "1 - Lambertian");
-        mvwprintw(optWin, line++, 0, "2 - Metal");
-        mvwprintw(optWin, line++, 0, "3 - Dielectric");
-
+    void term::recoverXML() {
+        std::string filename;
         
         while(true) {
-            int choice = getIntParameter(optWin, inputWin, line++);
-            point3 color;
-            switch (choice) {
-                case 1:
-                    mvwprintw(optWin, line++, 0, "Color R, G, B (ex: \"0.5, 0.5, 0.5\"): ");
-                    color = getPoint3Parameter(optWin, inputWin, line++);
-
-                    return std::make_shared<lambertian>(color);
-                case 2:
-                    double fuzz;
-                    mvwprintw(optWin, line++, 0, "Color R, G, B (ex: \"0.5, 0.5, 0.5\"): ");
-                    color = getPoint3Parameter(optWin, inputWin, line++);
-                    mvwprintw(optWin, line++, 0, "Fuzz: ex: 2.0");
-                    fuzz = getDoubleParameter(optWin, inputWin, line++);
-
-                    return std::make_shared<metal>(color, fuzz);
-
-                case 3:
-                    double ir;
-                    mvwprintw(optWin, line++, 0, "Index of refraction: ex: 2.0");
-                    ir = getDoubleParameter(optWin, inputWin, line++);
-
-                    return std::make_shared<dielectric>(ir);
-                default:
-                    mvwprintw(optWin, line+5, 0, "Invalid option!");
-                    wrefresh(optWin);
+            filename = getFilename();
+            try {
+                rtEngine = Engine(filename.c_str());
+                break;
             }
-        }       
+            catch(std::exception& e) {
+                mvwprintw(optWin, 10, 0, "Error while handling file, try again or another file");
+                mvwprintw(optWin, 11, 0, "Press enter to try again");
+                wrefresh(optWin);
+                auto c = wgetch(inputWin);
+                while(c != '\n') {c = wgetch(inputWin); }
+            }
+        }
 
+        // update the view to the new size of the window
+        sf::FloatRect visibleArea(0, 0, rtEngine.getImgWidth(), rtEngine.getImgHeight());
+        rtWindow.setView(sf::View(visibleArea));
+        mvwprintw(optWin, 10, 0, "Loaded! Press enter to return");
+        wrefresh(optWin);
+        auto c = wgetch(inputWin);
+        while(c != '\n') {c = wgetch(inputWin); }
     }
 
-    std::shared_ptr<sphere> createSphere(WINDOW* optWin, WINDOW* inputWin, int line) {
-        mvwprintw(optWin, line++, 0, "------- Sphere Parameters -------");
-
-        point3 center;
-        double radius;
-        mvwprintw(optWin, line++, 0, "Center of the sphere (ex: \"1, 2, 3\"): ");
-        center = getPoint3Parameter(optWin, inputWin, line++);
-        mvwprintw(optWin, line++, 0, "Radius: ");
-        radius = getDoubleParameter(optWin, inputWin, line++);
-
-        return std::make_shared<sphere>(center, radius, selectMaterial(optWin, inputWin, line));
+    void term::saveXML() {
+        auto filename = getFilename();
+        rtEngine.saveXmlDocument(filename.c_str());
+        mvwprintw(optWin, 10, 0, "Saved! Press enter to return");
+        wrefresh(optWin);
+        auto c = wgetch(inputWin);
+        while(c != '\n') {c = wgetch(inputWin); }
     }
 
-    std::shared_ptr<moving_sphere> createMovingSphere(WINDOW* optWin, WINDOW* inputWin, int line) {
-        mvwprintw(optWin, line++, 0, "------- Moving Sphere Parameters -------");
-
-        point3 center0, center1;
-        double radius, time0, time1;
-        mvwprintw(optWin, line++, 0, "Center of the sphere at time 0(ex: \"1, 2, 3\"): ");
-        center0 = getPoint3Parameter(optWin, inputWin, line++);
-        mvwprintw(optWin, line++, 0, "Time 0: ");
-        time0 = getDoubleParameter(optWin, inputWin, line++);
-
-        mvwprintw(optWin, line++, 0, "Center of the sphere at time 1(ex: \"1, 2, 3\"): ");
-        center1 = getPoint3Parameter(optWin, inputWin, line++);
-        mvwprintw(optWin, line++, 0, "Time 1: ");
-        time1 = getDoubleParameter(optWin, inputWin, line++);
-
-        mvwprintw(optWin, line++, 0, "Radius: ");
-        radius = getDoubleParameter(optWin, inputWin, line++);
-
-        return std::make_shared<moving_sphere>(center0, center1, time0, time1, radius, selectMaterial(optWin, inputWin, line));
+    void term::saveImage() {
+        auto filename = getFilename();
+        rtEngine.getTexture().copyToImage().saveToFile(filename);
+        mvwprintw(optWin, 10, 0, "Saved! Press enter to return");
+        wrefresh(optWin);
+        auto c = wgetch(inputWin);
+        while(c != '\n') {c = wgetch(inputWin); }
     }
 
-    void newScene(WINDOW* optWin, WINDOW* inputWin, Engine& rtEngine, sf::RenderWindow& window) {
+    void term::newScene() {
         int line = 0;
         werase(optWin);
         wmove(optWin, 0, 0);
@@ -355,16 +429,16 @@ namespace termGui {
         mvwprintw(optWin, line++, 0, "------- Image Parameters -------");
 
         mvwprintw(optWin, line++, 0, "Image Width: ");
-        imgWidth = getIntParameter(optWin, inputWin, line++);
+        imgWidth = getIntParameter(line++);
 
         mvwprintw(optWin, line++, 0, "Image height: ");
-        imgHeight = getIntParameter(optWin, inputWin, line++);
+        imgHeight = getIntParameter(line++);
 
         mvwprintw(optWin, line++, 0, "Samples Per Pixel: ");
-        samples_per_pixel = getIntParameter(optWin, inputWin, line++);
+        samples_per_pixel = getIntParameter(line++);
 
         mvwprintw(optWin, line++, 0, "Max Depth: ");
-        max_depth = getIntParameter(optWin, inputWin, line++);
+        max_depth = getIntParameter(line++);
 
         rtEngine = Engine(imgWidth, imgHeight, samples_per_pixel, max_depth);
 
@@ -377,28 +451,28 @@ namespace termGui {
         mvwprintw(optWin, line++, 0, "------- Camera Parameters -------");
 
         mvwprintw(optWin, line++, 0, "Camera Origin point: (ex: \"13, 2, 3\")");
-        lookfrom = getPoint3Parameter(optWin, inputWin, line++);
+        lookfrom = getPoint3Parameter(line++);
 
         mvwprintw(optWin, line++, 0, "Point the camera is looking at: (ex: \"0, 0, 0\")");
-        lookat = getPoint3Parameter(optWin, inputWin, line++);
+        lookat = getPoint3Parameter(line++);
 
         mvwprintw(optWin, line++, 0, "View-up-vector vector: (ex: horizontal angle \"0, 1, 0\")");
-        vup = lookfrom + getPoint3Parameter(optWin, inputWin, line++);
+        vup = lookfrom + getPoint3Parameter(line++);
 
         mvwprintw(optWin, line++, 0, "Vertical Field of View: ex: \"20.0\"");
-        vfov = getDoubleParameter(optWin, inputWin, line++);
+        vfov = getDoubleParameter(line++);
 
         mvwprintw(optWin, line++, 0, "Aperture: ex: \"0.1\"");
-        aperture = getDoubleParameter(optWin, inputWin, line++);
+        aperture = getDoubleParameter(line++);
 
         mvwprintw(optWin, line++, 0, "Focus Distance: ex: \"10.0\"");
-        focus_dist = getDoubleParameter(optWin, inputWin, line++);
+        focus_dist = getDoubleParameter(line++);
 
         mvwprintw(optWin, line++, 0, "Time0: ex: \"0.0\"");
-        time0 = getDoubleParameter(optWin, inputWin, line++);
+        time0 = getDoubleParameter(line++);
 
         mvwprintw(optWin, line++, 0, "Time1: \"0.0\"");
-        time1 = getDoubleParameter(optWin, inputWin, line++);
+        time1 = getDoubleParameter(line++);
 
         rtEngine.setCamera(lookfrom, lookat, vup, vfov, aperture, focus_dist, time0, time1);
 
@@ -417,13 +491,13 @@ namespace termGui {
 
             wrefresh(optWin);
 
-            int choice = getIntParameter(optWin, inputWin, line++);
+            int choice = getIntParameter(line++);
             switch (choice) {
                 case 1:
-                    rtEngine.addToWorld(createSphere(optWin, inputWin, line));
+                    rtEngine.addToWorld(createSphere(line));
                     break;
                 case 2:
-                    rtEngine.addToWorld(createMovingSphere(optWin, inputWin, line));
+                    rtEngine.addToWorld(createMovingSphere(line));
                     break;
                 case 0:
                     exit = true;
@@ -435,125 +509,83 @@ namespace termGui {
         }
 
         sf::FloatRect visibleArea(0, 0, rtEngine.getImgWidth(), rtEngine.getImgHeight());
-        window.setView(sf::View(visibleArea));
-
-        initOptWin(optWin);
+        rtWindow.setView(sf::View(visibleArea));
     }
 
-    void main_ncurses(sf::RenderWindow& window, Engine& rtEngine) {
-        initscr();			/* Start curses mode 		  */
-        erase();            /* clear entire screen */
-        // raw();
-        cbreak();
-        noecho();           /* Disable echoing */
-        /* Construct header*/
-        auto height = 7;
-        auto width = 54;
-        // auto startx = (COLS - width) / 2;
-        auto startx = 0;
-        auto starty = 0;
-        WINDOW* headerWindow = newwin(height, width, starty, startx);
-        initHeaderWindow(headerWindow);
-        // refresh();			/* Print it on to the real screen */
+    std::shared_ptr<moving_sphere> term::createMovingSphere(int line) {
+        mvwprintw(optWin, line++, 0, "------- Moving Sphere Parameters -------");
 
-        /* Construct progress bar window */
-        height = 2;
-        width = 61;
-        // startx = (COLS - width) / 2;
-        startx = 0;
-        starty = (LINES - 2);
-        WINDOW* progressBarWindow = newwin(height, width, starty, startx);
+        point3 center0, center1;
+        double radius, time0, time1;
+        mvwprintw(optWin, line++, 0, "Center of the sphere at time 0(ex: \"1, 2, 3\"): ");
+        center0 = getPoint3Parameter(line++);
+        mvwprintw(optWin, line++, 0, "Time 0: ");
+        time0 = getDoubleParameter(line++);
 
-        /* Construct input window */
-        height = 0;
-        width = 20;
-        startx = 0;
-        starty = (LINES -1);
-        WINDOW* inputWin = newwin(height, width, starty, startx);
+        mvwprintw(optWin, line++, 0, "Center of the sphere at time 1(ex: \"1, 2, 3\"): ");
+        center1 = getPoint3Parameter(line++);
+        mvwprintw(optWin, line++, 0, "Time 1: ");
+        time1 = getDoubleParameter(line++);
 
-        /* Construct options window */
-        height = 30;
-        width = 61;
-        startx = 0;
-        starty = 10;
-        WINDOW* optionsWin = newwin(height, width, starty, startx);
-        initOptWin(optionsWin);
+        mvwprintw(optWin, line++, 0, "Radius: ");
+        radius = getDoubleParameter(line++);
 
-        sf::Sprite sprite(rtEngine.getTexture());
-        sf::FloatRect visibleArea;
+        return std::make_shared<moving_sphere>(center0, center1, time0, time1, radius, selectMaterial(line));
+    }
 
-        while(!timeToClose) {
-            if (rtEngine.isWorking()) {
-                updateProgressBar(rtEngine, progressBarWindow);
-                // window.setVisible(false);
+    std::shared_ptr<sphere> term::createSphere(int line) {
+        mvwprintw(optWin, line++, 0, "------- Sphere Parameters -------");
+
+        point3 center;
+        double radius;
+        mvwprintw(optWin, line++, 0, "Center of the sphere (ex: \"1, 2, 3\"): ");
+        center = getPoint3Parameter(line++);
+        mvwprintw(optWin, line++, 0, "Radius: ");
+        radius = getDoubleParameter(line++);
+
+        return std::make_shared<sphere>(center, radius, selectMaterial(line));
+    }
+
+    std::shared_ptr<material> term::selectMaterial(int line) {
+        mvwprintw(optWin, line++, 0, "------- Material Parameters -------");
+        mvwprintw(optWin, line++, 0, "Select a material");
+        mvwprintw(optWin, line++, 0, "1 - Lambertian");
+        mvwprintw(optWin, line++, 0, "2 - Metal");
+        mvwprintw(optWin, line++, 0, "3 - Dielectric");
+
+        
+        while(true) {
+            int choice = getIntParameter(line++);
+            point3 color;
+            switch (choice) {
+                case 1:
+                    mvwprintw(optWin, line++, 0, "Color R, G, B (ex: \"0.5, 0.5, 0.5\"): ");
+                    color = getPoint3Parameter(line++);
+
+                    return std::make_shared<lambertian>(color);
+                case 2:
+                    double fuzz;
+                    mvwprintw(optWin, line++, 0, "Color R, G, B (ex: \"0.5, 0.5, 0.5\"): ");
+                    color = getPoint3Parameter(line++);
+                    mvwprintw(optWin, line++, 0, "Fuzz: ex: 2.0");
+                    fuzz = getDoubleParameter(line++);
+
+                    return std::make_shared<metal>(color, fuzz);
+
+                case 3:
+                    double ir;
+                    mvwprintw(optWin, line++, 0, "Index of refraction: ex: 2.0");
+                    ir = getDoubleParameter(line++);
+
+                    return std::make_shared<dielectric>(ir);
+                default:
+                    mvwprintw(optWin, line+5, 0, "Invalid option!");
+                    wrefresh(optWin);
             }
-            else {
-                wclear(progressBarWindow);
-                // window.setVisible(true);
-                auto c = wgetch(inputWin);
-                // auto c = KEY_IL;
-                switch(c) {
-                    case '\n':
-                        rtEngine.setToWork();
-                        mvwprintw(optionsWin, 10, 0, "Working.... wait render to finish before pressing any key");
-                        wrefresh(optionsWin);
-                        break;
-                    case 'c':
-                        newScene(optionsWin, inputWin, rtEngine, window);
-                        wrefresh(optionsWin);
-                        break;
-                    case 'r':
-                        recoverXML(optionsWin, inputWin, rtEngine, window);
-                        break;
-                    case 'p':
-                        rtEngine = Engine();
-                        visibleArea = sf::FloatRect(0, 0, rtEngine.getImgWidth(), rtEngine.getImgHeight());
-                        window.setView(sf::View(visibleArea));
-                        wmove(optionsWin, 10, 0);
-                        wclrtoeol(optionsWin);
-                        wprintw(optionsWin, "Example scene loaded");
-                        wrefresh(optionsWin);
-                        break;
-                    case 's':
-                        saveXML(optionsWin, inputWin, rtEngine);
-                        break;
-                    case 'i':
-                        if (rtEngine.hasImageReady()) {
-                            saveImage(optionsWin, inputWin, rtEngine);
-                            mvwprintw(optionsWin, 10, 0, "Image saved");
-                            wrefresh(optionsWin);
-                        }
-                        else {
-                            mvwprintw(optionsWin, 10, 0, "Must render a scene first");
-                            mvwprintw(optionsWin, 11, 0, "Press enter to return");
-                            wrefresh(optionsWin);
-                            auto c = wgetch(inputWin);
-                            while(c != '\n') {c = wgetch(inputWin); }
-                            initOptWin(optionsWin);                            
-                        }
-                        break;
-                    case 'q':
-                        timeToClose = true;
-                        erase();
-                        break;
-                    default:
-                        if(has_colors() == FALSE) {	
-                            start_color();			/* Start color 			*/
-                            init_pair(1, COLOR_RED, COLOR_BLACK);
-                            attron(COLOR_PAIR(1));
-                        }
-                            
-                        mvwprintw(optionsWin, 10, 0, "Invalid option!");
-                        wrefresh(optionsWin);
-                }
+        }       
 
-                // initOptWin(optionsWin);
-                // wrefresh(inputWin);
-                // refresh();
-            }
-        };
-        endwin();			/* End curses mode		  */
-    }   
+    }
+
 }
 
 

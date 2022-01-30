@@ -58,7 +58,8 @@ int main(int argc, char *argv[])
     sf::RenderWindow window(videomode, "Ray Tracing Engine", sf::Style::Default & (~sf::Style::Close));
     window.setVisible(false);
 
-    termGui::init(window, rtEngine);
+    termGui::term terminal(window, rtEngine);
+    terminal.init();
     //std::thread tGui(termGui::main_ncurses, std::ref(window), std::ref(rtEngine));
 
     // // Create the main window
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
     // text.setPosition(320, 360);
 
     // run the program as long as the window is open
-    while (!termGui::timeToClose)
+    while (!terminal.isTimeToClose())
     {
         // check all the window's events that were triggered since the last iteration of the loop
         sf::Event event;
@@ -105,7 +106,7 @@ int main(int argc, char *argv[])
         rtEngine.getTexture().copyToImage().saveToFile(file_image_to);
     }
 
-    termGui::close();
+    terminal.close();
     
 
     return 0;
