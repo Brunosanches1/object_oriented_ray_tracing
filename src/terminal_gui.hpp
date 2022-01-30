@@ -434,6 +434,9 @@ namespace termGui {
             }
         }
 
+        sf::FloatRect visibleArea(0, 0, rtEngine.getImgWidth(), rtEngine.getImgHeight());
+        window.setView(sf::View(visibleArea));
+
         initOptWin(optWin);
     }
 
@@ -477,6 +480,7 @@ namespace termGui {
         initOptWin(optionsWin);
 
         sf::Sprite sprite(rtEngine.getTexture());
+        sf::FloatRect visibleArea;
 
         while(!timeToClose) {
             if (rtEngine.isWorking()) {
@@ -503,7 +507,11 @@ namespace termGui {
                         break;
                     case 'p':
                         rtEngine = Engine();
-                        mvwprintw(optionsWin, 10, 0, "Example scene loaded");
+                        visibleArea = sf::FloatRect(0, 0, rtEngine.getImgWidth(), rtEngine.getImgHeight());
+                        window.setView(sf::View(visibleArea));
+                        wmove(optionsWin, 10, 0);
+                        wclrtoeol(optionsWin);
+                        wprintw(optionsWin, "Example scene loaded");
                         wrefresh(optionsWin);
                         break;
                     case 's':

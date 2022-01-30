@@ -3,6 +3,7 @@
 
 #include "rt.hpp"
 #include "../include/tinyxml2.h"
+#include <iostream>
 
 class camera {
     public:
@@ -16,7 +17,7 @@ class camera {
             double aspect_ratio,
             double aperture,
             double focus_dist,double _time0 = 0,
-            double _time1 = 0) {
+            double _time1 = 0) : lookat(lookat), vup(vup), vfov(vfov), aspect_ratio(aspect_ratio), aperture(aperture), focus_dist(focus_dist) {
 				
             auto theta = degrees_to_radians(vfov);
             auto h = tan(theta/2);
@@ -47,44 +48,42 @@ class camera {
         }
 
         camera(tinyxml2::XMLElement * pElement) {
-            lens_radius = pElement->DoubleAttribute("LensRadius");
+            aperture = pElement->DoubleAttribute("Aperture");
+            vfov = pElement->DoubleAttribute("Vfov");
+            aspect_ratio = pElement->DoubleAttribute("AspectRatio");
+            focus_dist = pElement->DoubleAttribute("FocusDist");
             time0 = pElement->DoubleAttribute("Time0");
             time1 = pElement->DoubleAttribute("Time1");
 
-            tinyxml2::XMLElement * pOriginElement = pElement->FirstChildElement("Origin");
-            if (pOriginElement == nullptr) throw std::invalid_argument("Camera Element does not have a Origin element");
+            tinyxml2::XMLElement * pLookFromElement = pElement->FirstChildElement("LookFrom");
+            if (pLookFromElement == nullptr) throw std::invalid_argument("Camera Element does not have a LookFrom element");
 
-            origin = vec3(pOriginElement);
+            origin = vec3(pLookFromElement);
 
-            tinyxml2::XMLElement * pLowerLeftCornerElement = pElement->FirstChildElement("LowerLeftCorner");
-            if (pLowerLeftCornerElement == nullptr) throw std::invalid_argument("Camera Element does not have a LowerLeftCorner element");
+            tinyxml2::XMLElement * pLookAtElement = pElement->FirstChildElement("LookAt");
+            if (pLookAtElement == nullptr) throw std::invalid_argument("Camera Element does not have a LookAt element");
 
-            lower_left_corner = vec3(pLowerLeftCornerElement);
+            lookat = vec3(pLookAtElement);
 
-            tinyxml2::XMLElement * pHorizontalElement = pElement->FirstChildElement("Horizontal");
-            if (pHorizontalElement == nullptr) throw std::invalid_argument("Camera Element does not have a Horizontal element");
+            tinyxml2::XMLElement * pVupElement = pElement->FirstChildElement("Vup");
+            if (pVupElement == nullptr) throw std::invalid_argument("Camera Element does not have a Vup element");
 
-            horizontal = vec3(pHorizontalElement);
+            vup = vec3(pVupElement);
 
-            tinyxml2::XMLElement * pVerticalElement = pElement->FirstChildElement("Vertical");
-            if (pVerticalElement == nullptr) throw std::invalid_argument("Camera Element does not have a Vertical element");
+            auto theta = degrees_to_radians(vfov);
+            auto h = tan(theta/2);
+            auto viewport_height = 2.0 * h;
+            auto viewport_width = aspect_ratio * viewport_height;
+            
+            w = unit_vector(origin - lookat);
+            u = unit_vector(cross(vup, w));
+            v = cross(w, u);
+            
+            horizontal = focus_dist * viewport_width * u;
+            vertical = focus_dist * viewport_height * v;
+            lower_left_corner = origin - horizontal/2 - vertical/2 - focus_dist*w;
 
-            vertical = vec3(pVerticalElement);
-
-            tinyxml2::XMLElement * pUElement = pElement->FirstChildElement("U");
-            if (pUElement == nullptr) throw std::invalid_argument("Camera Element does not have a U element");
-
-            u = vec3(pUElement);
-
-            tinyxml2::XMLElement * pVElement = pElement->FirstChildElement("V");
-            if (pVElement == nullptr) throw std::invalid_argument("Camera Element does not have a V element");
-
-            v = vec3(pVElement);
-
-            tinyxml2::XMLElement * pWElement = pElement->FirstChildElement("W");
-            if (pWElement == nullptr) throw std::invalid_argument("Camera Element does not have a W element");
-
-            w = vec3(pWElement);
+            lens_radius = aperture / 2;
 
         }
 
@@ -102,37 +101,45 @@ class camera {
         tinyxml2::XMLElement* to_xml(tinyxml2::XMLDocument& xmlDoc) const {
             tinyxml2::XMLElement * pElement = xmlDoc.NewElement("Camera");
 
-            pElement->SetAttribute("LensRadius", lens_radius);
+            // pElement->SetAttribute("LensRadius", lens_radius);
+            pElement->SetAttribute("Aperture", aperture);
+            pElement->SetAttribute("Vfov", vfov);
+            pElement->SetAttribute("AspectRatio", aspect_ratio);
+            pElement->SetAttribute("FocusDist", focus_dist);
             pElement->SetAttribute("Time0", time0);
             pElement->SetAttribute("Time1", time1);
             
-            tinyxml2::XMLElement* origin_xml = xmlDoc.NewElement("Origin");
-            origin.to_xml(origin_xml);
-            pElement->InsertEndChild(origin_xml);
+            tinyxml2::XMLElement* look_from_xml = xmlDoc.NewElement("LookFrom");
+            origin.to_xml(look_from_xml);
+            pElement->InsertEndChild(look_from_xml);
 
-            tinyxml2::XMLElement* lower_left_corner_xml = xmlDoc.NewElement("LowerLeftCorner");
-            lower_left_corner.to_xml(lower_left_corner_xml);
-            pElement->InsertEndChild(lower_left_corner_xml);
+            tinyxml2::XMLElement* lookat_xml = xmlDoc.NewElement("LookAt");
+            lookat.to_xml(lookat_xml);
+            pElement->InsertEndChild(lookat_xml);
 
-            tinyxml2::XMLElement* horizontal_xml = xmlDoc.NewElement("Horizontal");
-            horizontal.to_xml(horizontal_xml);
-            pElement->InsertEndChild(horizontal_xml);
+            // tinyxml2::XMLElement* lower_left_corner_xml = xmlDoc.NewElement("LowerLeftCorner");
+            // lower_left_corner.to_xml(lower_left_corner_xml);
+            // pElement->InsertEndChild(lower_left_corner_xml);
 
-            tinyxml2::XMLElement* vertical_xml = xmlDoc.NewElement("Vertical");
-            vertical.to_xml(vertical_xml);
-            pElement->InsertEndChild(vertical_xml);
+            // tinyxml2::XMLElement* horizontal_xml = xmlDoc.NewElement("Horizontal");
+            // horizontal.to_xml(horizontal_xml);
+            // pElement->InsertEndChild(horizontal_xml);
 
-            tinyxml2::XMLElement* u_xml = xmlDoc.NewElement("U");
-            u.to_xml(u_xml);
-            pElement->InsertEndChild(u_xml);
+            // tinyxml2::XMLElement* vertical_xml = xmlDoc.NewElement("Vertical");
+            // vertical.to_xml(vertical_xml);
+            // pElement->InsertEndChild(vertical_xml);
 
-            tinyxml2::XMLElement* v_xml = xmlDoc.NewElement("V");
-            v.to_xml(v_xml);
-            pElement->InsertEndChild(v_xml);
+            // tinyxml2::XMLElement* u_xml = xmlDoc.NewElement("U");
+            // u.to_xml(u_xml);
+            // pElement->InsertEndChild(u_xml);
 
-            tinyxml2::XMLElement* w_xml = xmlDoc.NewElement("W");
-            w.to_xml(w_xml);
-            pElement->InsertEndChild(w_xml);
+            tinyxml2::XMLElement* vup_xml = xmlDoc.NewElement("Vup");
+            vup.to_xml(vup_xml);
+            pElement->InsertEndChild(vup_xml);
+
+            // tinyxml2::XMLElement* w_xml = xmlDoc.NewElement("W");
+            // w.to_xml(w_xml);
+            // pElement->InsertEndChild(w_xml);
 
             return pElement;
 
@@ -146,5 +153,11 @@ class camera {
         vec3 u, v, w;
         double lens_radius;
         double time0, time1;  // shutter open/close times
+
+        // Variables to save parameters
+        point3 lookat;
+        vec3 vup;
+        double vfov, aspect_ratio, aperture, focus_dist;
+
 };
 #endif
