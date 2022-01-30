@@ -4,7 +4,12 @@
 #include <SFML/System.hpp>
 #include <thread>
 #include <stdexcept>
+#include <memory>
+#include "sphere.hpp"
+#include "moving_sphere.hpp"
+#include "material.hpp"
 #include "engine.hpp"
+#include "vec3.hpp"
 
 #ifndef TERMINAL_GUI
 #define TERMINAL_GUI
@@ -78,12 +83,12 @@ namespace termGui {
         wmove(win, 0, 0);
         wprintw(win, "Press the key indicated to perform an action\n");
         wprintw(win, "Enter - Render the scene in a window\n");
+        wprintw(win, "c - Create a new scene\n");
         wprintw(win, "r - Recover scene from a XML file\n");
         wprintw(win, "p - Load example scene\n");
         wprintw(win, "s - Save scene in XML format\n");
         wprintw(win, "i - Save scene in image format\n");
         wprintw(win, "q - quit\n");
-        wprintw(win, "There is already a preloaded scene\n");
         wrefresh(win);
     }
 
@@ -145,7 +150,6 @@ namespace termGui {
     void saveXML(WINDOW* optWin, WINDOW* inputWin, Engine& rtEngine) {
         auto filename = getFilename(optWin, inputWin);
         rtEngine.saveXmlDocument(filename.c_str());
-
         mvwprintw(optWin, 10, 0, "Saved! Press enter to return");
         wrefresh(optWin);
         auto c = wgetch(inputWin);
@@ -160,6 +164,276 @@ namespace termGui {
         wrefresh(optWin);
         auto c = wgetch(inputWin);
         while(c != '\n') {c = wgetch(inputWin); }
+        initOptWin(optWin);
+    }
+
+    std::string getParameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+        wmove(optWin, line, 0);
+        wclrtoeol(optWin);
+        wrefresh(optWin);
+        keypad(inputWin, true);
+        auto c = wgetch(inputWin);
+        std::string value;
+        while(c != '\n') {
+            if (c == KEY_BACKSPACE || c == KEY_DC || c == 8) {
+                wrefresh(optWin);
+                wmove(optWin, line, 0);
+                wrefresh(optWin);
+                wclrtoeol(optWin);
+                wrefresh(optWin);
+                value.pop_back();
+            }
+            else {
+                value.push_back(c);
+            }
+            mvwprintw(optWin, line, 0, value.c_str());
+            wrefresh(optWin);
+            c = wgetch(inputWin);
+        }
+        keypad(inputWin, false);
+        return value;
+    }
+
+    double getDoubleParameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+        double val;
+        while (true) {
+            try {
+                std::string s = getParameter(optWin, inputWin, line);
+                val = std::stod(s);
+                break;
+            }
+            catch (std::exception& e) {
+                mvwprintw(optWin, line +1, 0, "Error in value. Try again");
+                wrefresh(optWin);
+            }
+        }
+        wmove(optWin, line+1, 0);
+        wclrtoeol(optWin);
+        wrefresh(optWin);
+
+        return val;
+    }
+
+    int getIntParameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+        int val;
+        while (true) {
+            try {
+                std::string s = getParameter(optWin, inputWin, line);
+                val = std::stoi(s);
+                break;
+            }
+            catch (std::exception& e) {
+                mvwprintw(optWin, line +1, 0, "Error in value. Try again");
+                wrefresh(optWin);
+            }
+        }
+        wmove(optWin, line+1, 0);
+        wclrtoeol(optWin);
+        wrefresh(optWin);
+
+        return val;
+    }
+
+    point3 getPoint3Parameter(WINDOW* optWin, WINDOW* inputWin, int line) {
+        point3 val;
+        char delimiter = ',';
+        while (true) {
+            try {
+                std::string s = getParameter(optWin, inputWin, line);
+                int i = 0;
+                for (char c : s) {
+                    if (c == ',') i++;
+                }
+
+                if (i != 2) throw std::invalid_argument("Not the correct number of commas");
+
+                std::string x_str = s.substr(0, s.find(delimiter));
+
+                s = s.substr(s.find(delimiter)+1);
+                std::string y_str = s.substr(0, s.find(delimiter));
+
+                std::string z_str = s.substr(s.find(delimiter)+1);
+
+                val[0] = std::stod(x_str);
+                val[1] = std::stod(y_str);
+                val[2] = std::stod(z_str);
+
+                break;
+            }
+            catch (std::exception& e) {
+                mvwprintw(optWin, line +1, 0, "Error in value. Try again");
+                wrefresh(optWin);
+            }
+        }
+        wmove(optWin, line+1, 0);
+        wclrtoeol(optWin);
+        wrefresh(optWin);
+        return val;
+    }
+
+    std::shared_ptr<material> selectMaterial(WINDOW* optWin, WINDOW* inputWin, int line) {
+        mvwprintw(optWin, line++, 0, "------- Material Parameters -------");
+        mvwprintw(optWin, line++, 0, "Select a material");
+        mvwprintw(optWin, line++, 0, "1 - Lambertian");
+        mvwprintw(optWin, line++, 0, "2 - Metal");
+        mvwprintw(optWin, line++, 0, "3 - Dielectric");
+
+        
+        while(true) {
+            int choice = getIntParameter(optWin, inputWin, line++);
+            point3 color;
+            switch (choice) {
+                case 1:
+                    mvwprintw(optWin, line++, 0, "Color R, G, B (ex: \"0.5, 0.5, 0.5\"): ");
+                    color = getPoint3Parameter(optWin, inputWin, line++);
+
+                    return std::make_shared<lambertian>(color);
+                case 2:
+                    double fuzz;
+                    mvwprintw(optWin, line++, 0, "Color R, G, B (ex: \"0.5, 0.5, 0.5\"): ");
+                    color = getPoint3Parameter(optWin, inputWin, line++);
+                    mvwprintw(optWin, line++, 0, "Fuzz: ex: 2.0");
+                    fuzz = getDoubleParameter(optWin, inputWin, line++);
+
+                    return std::make_shared<metal>(color, fuzz);
+
+                case 3:
+                    double ir;
+                    mvwprintw(optWin, line++, 0, "Index of refraction: ex: 2.0");
+                    ir = getDoubleParameter(optWin, inputWin, line++);
+
+                    return std::make_shared<dielectric>(ir);
+                default:
+                    mvwprintw(optWin, line+5, 0, "Invalid option!");
+                    wrefresh(optWin);
+            }
+        }       
+
+    }
+
+    std::shared_ptr<sphere> createSphere(WINDOW* optWin, WINDOW* inputWin, int line) {
+        mvwprintw(optWin, line++, 0, "------- Sphere Parameters -------");
+
+        point3 center;
+        double radius;
+        mvwprintw(optWin, line++, 0, "Center of the sphere (ex: \"1, 2, 3\"): ");
+        center = getPoint3Parameter(optWin, inputWin, line++);
+        mvwprintw(optWin, line++, 0, "Radius: ");
+        radius = getDoubleParameter(optWin, inputWin, line++);
+
+        return std::make_shared<sphere>(center, radius, selectMaterial(optWin, inputWin, line));
+    }
+
+    std::shared_ptr<moving_sphere> createMovingSphere(WINDOW* optWin, WINDOW* inputWin, int line) {
+        mvwprintw(optWin, line++, 0, "------- Moving Sphere Parameters -------");
+
+        point3 center0, center1;
+        double radius, time0, time1;
+        mvwprintw(optWin, line++, 0, "Center of the sphere at time 0(ex: \"1, 2, 3\"): ");
+        center0 = getPoint3Parameter(optWin, inputWin, line++);
+        mvwprintw(optWin, line++, 0, "Time 0: ");
+        time0 = getDoubleParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Center of the sphere at time 1(ex: \"1, 2, 3\"): ");
+        center1 = getPoint3Parameter(optWin, inputWin, line++);
+        mvwprintw(optWin, line++, 0, "Time 1: ");
+        time1 = getDoubleParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Radius: ");
+        radius = getDoubleParameter(optWin, inputWin, line++);
+
+        return std::make_shared<moving_sphere>(center0, center1, time0, time1, radius, selectMaterial(optWin, inputWin, line));
+    }
+
+    void newScene(WINDOW* optWin, WINDOW* inputWin, Engine& rtEngine, sf::RenderWindow& window) {
+        int line = 0;
+        werase(optWin);
+        wmove(optWin, 0, 0);
+
+        int imgHeight, imgWidth, samples_per_pixel, max_depth;
+
+        mvwprintw(optWin, line++, 0, "------- Image Parameters -------");
+
+        mvwprintw(optWin, line++, 0, "Image Width: ");
+        imgWidth = getIntParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Image height: ");
+        imgHeight = getIntParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Samples Per Pixel: ");
+        samples_per_pixel = getIntParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Max Depth: ");
+        max_depth = getIntParameter(optWin, inputWin, line++);
+
+        rtEngine = Engine(imgWidth, imgHeight, samples_per_pixel, max_depth);
+
+        line = 0;
+        werase(optWin);
+        wmove(optWin, 0, 0);
+        point3 lookfrom, lookat, vup;
+        double vfov, aperture, focus_dist, time0, time1;
+
+        mvwprintw(optWin, line++, 0, "------- Camera Parameters -------");
+
+        mvwprintw(optWin, line++, 0, "Camera Origin point: (ex: \"13, 2, 3\")");
+        lookfrom = getPoint3Parameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Point the camera is looking at: (ex: \"0, 0, 0\")");
+        lookat = getPoint3Parameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "View-up-vector vector: (ex: horizontal angle \"0, 1, 0\")");
+        vup = lookfrom + getPoint3Parameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Vertical Field of View: ex: \"20.0\"");
+        vfov = getDoubleParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Aperture: ex: \"0.1\"");
+        aperture = getDoubleParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Focus Distance: ex: \"10.0\"");
+        focus_dist = getDoubleParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Time0: ex: \"0.0\"");
+        time0 = getDoubleParameter(optWin, inputWin, line++);
+
+        mvwprintw(optWin, line++, 0, "Time1: \"0.0\"");
+        time1 = getDoubleParameter(optWin, inputWin, line++);
+
+        rtEngine.setCamera(lookfrom, lookat, vup, vfov, aperture, focus_dist, time0, time1);
+
+        bool exit = false;
+        while(!exit) {
+            line = 0;
+            werase(optWin);
+            wmove(optWin, line, 0);
+
+            mvwprintw(optWin, line++, 0, "------- World Items -------");
+            mvwprintw(optWin, line++, 0, "Select an Item to add");
+            mvwprintw(optWin, line++, 0, "1 - Sphere");
+            mvwprintw(optWin, line++, 0, "2 - Moving Sphere");
+            mvwprintw(optWin, line++, 0, "0 - Exit");
+            mvwprintw(optWin, line++, 0, "OBS: Don't Forget the ground material, we use a big sphere");
+
+            wrefresh(optWin);
+
+            int choice = getIntParameter(optWin, inputWin, line++);
+            switch (choice) {
+                case 1:
+                    rtEngine.addToWorld(createSphere(optWin, inputWin, line));
+                    break;
+                case 2:
+                    rtEngine.addToWorld(createMovingSphere(optWin, inputWin, line));
+                    break;
+                case 0:
+                    exit = true;
+                    break;
+                default:
+                    mvwprintw(optWin, line+5, 0, "Invalid option!");
+                    wrefresh(optWin);
+            }
+        }
+
         initOptWin(optWin);
     }
 
@@ -220,6 +494,10 @@ namespace termGui {
                         mvwprintw(optionsWin, 10, 0, "Working.... wait render to finish before pressing any key");
                         wrefresh(optionsWin);
                         break;
+                    case 'c':
+                        newScene(optionsWin, inputWin, rtEngine, window);
+                        wrefresh(optionsWin);
+                        break;
                     case 'r':
                         recoverXML(optionsWin, inputWin, rtEngine, window);
                         break;
@@ -232,8 +510,11 @@ namespace termGui {
                         saveXML(optionsWin, inputWin, rtEngine);
                         break;
                     case 'i':
-                        if (rtEngine.hasImageReady())
+                        if (rtEngine.hasImageReady()) {
                             saveImage(optionsWin, inputWin, rtEngine);
+                            mvwprintw(optionsWin, 10, 0, "Image saved");
+                            wrefresh(optionsWin);
+                        }
                         else {
                             mvwprintw(optionsWin, 10, 0, "Must render a scene first");
                             mvwprintw(optionsWin, 11, 0, "Press enter to return");

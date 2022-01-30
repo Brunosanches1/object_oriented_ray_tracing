@@ -46,9 +46,9 @@ class Engine {
                int samples_per_pixel = 50,
                int max_depth = 20);
 
-        Engine(unsigned int image_width, double aspect_ratio = 1.2,
-               int samples_per_pixel = 50,
-               int max_depth = 20);
+        // Engine(unsigned int image_width, double aspect_ratio = 1.2,
+        //        int samples_per_pixel = 50,
+        //        int max_depth = 20);
 
         Engine(const char* xml_filename);
 
@@ -102,6 +102,20 @@ class Engine {
         std::chrono::time_point<std::chrono::steady_clock> workStartTime() { return start_time; }
         int getRemainingLines() { return remaining_lines; }
 
+        void setCamera( point3 lookfrom,
+            point3 lookat,
+            vec3   vup,
+            double vfov, // vertical field-of-view in degrees
+            double aperture,
+            double focus_dist,double _time0 = 0,
+            double _time1 = 0) {
+                cam = camera(lookfrom, lookat, vup, vfov, aspect_ratio, aperture,
+                    focus_dist, _time0, _time1);
+            }
+        
+        void addToWorld(shared_ptr<hittable> item) {
+            world.add(item);
+        } 
 };
 
 Engine::Engine() : img_width(480), img_height(400), pixels(4*img_width*img_height),
@@ -125,40 +139,40 @@ Engine::Engine(unsigned int image_width, unsigned int image_height,
                int samples_per_pixel,
                int max_depth) :
     img_width(image_width), img_height(image_height), pixels(img_width*img_height*4),
-    samples_per_pixel(samples_per_pixel), aspect_ratio(img_width / img_height), max_depth(max_depth)  {
+    samples_per_pixel(samples_per_pixel), aspect_ratio(img_width / img_height), max_depth(max_depth), world(), cam()  {
 
         texture = sf::Texture();
         texture.create(img_width, img_height);
-        point3 lookfrom(13,2,3);
-        point3 lookat(0,0,0);
+        // point3 lookfrom(13,2,3);
+        // point3 lookat(0,0,0);
         
-        vec3 vup(0,1,0);
+        // vec3 vup(0,1,0);
         
-        auto dist_to_focus = 10.0;
-        auto aperture = 0.1;
+        // auto dist_to_focus = 10.0;
+        // auto aperture = 0.1;
 
-        cam = camera(lookfrom, lookat, vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
-        world = random_scene();
+        // cam = camera(lookfrom, lookat, vup, 20.0, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+        // world = random_scene();
     }
 
-Engine::Engine(unsigned int image_width, double aspect_ratio, 
-               int samples_per_pixel,
-               int max_depth) :
-    img_width(image_width), img_height(img_width/aspect_ratio), pixels(img_width*img_height*4),
-    samples_per_pixel(samples_per_pixel), aspect_ratio(aspect_ratio), max_depth(max_depth) {
-        texture = sf::Texture();
-        texture.create(img_width, img_height);
-        point3 lookfrom(13,2,3);
-        point3 lookat(0,0,0);
+// Engine::Engine(unsigned int image_width, double aspect_ratio, 
+//                int samples_per_pixel,
+//                int max_depth) :
+//     img_width(image_width), img_height(img_width/aspect_ratio), pixels(img_width*img_height*4),
+//     samples_per_pixel(samples_per_pixel), aspect_ratio(aspect_ratio), max_depth(max_depth), world(), cam() {
+//         texture = sf::Texture();
+//         texture.create(img_width, img_height);
+//         // point3 lookfrom(13,2,3);
+//         // point3 lookat(0,0,0);
         
-        vec3 vup(0,1,0);
+//         // vec3 vup(0,1,0);
         
-        auto dist_to_focus = 10.0;
-        auto aperture = 0.1;
+//         // auto dist_to_focus = 10.0;
+//         // auto aperture = 0.1;
 
-        cam = camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
-        world = random_scene();
-    }
+//         // cam = camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
+//         // world = random_scene();
+//     }
 
 Engine::Engine(const char* filename) {
     tinyxml2::XMLDocument xmlDoc;
