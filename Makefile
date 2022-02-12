@@ -30,11 +30,7 @@ clean:
 	@$(RM) -rv $(BIN_DIR) $(OBJ_DIR)
 
 install:
-	sudo apt-get install libsfml-dev libncurses-dev
-	cd include/sfml-widgets-master && make
-	mkdir -p lib/
-	cp include/sfml-widgets-master/lib/libsfml-widgets.a lib/libsfml-widgets.a
-
+	sudo apt-get install g++ libsfml-dev libncurses-dev
 
 test: $(EXE)
 	./$(EXE)
