@@ -7,9 +7,6 @@
 #include <cstring>
 #include <X11/Xlib.h> 
 #include "engine.hpp"
-#include "Gui/Menu.hpp"
-#include "Gui/Theme.hpp"
-#include "Gui/Gui.hpp"
 #include "terminal_gui.hpp"
 
 auto aspect_ratio = 3.0 / 2.0;

@@ -10,7 +10,7 @@ OBJ := $(SRC:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 CXX = g++
 CPPFLAGS := -MMD -MP -fopenmp -lncurses
 CXXFLAGS   := -Wall -O2 -std=c++14  -g
-LDFLAGS  := -L./lib -Linclude -Iinclude/sfml-widgets-master/src
+LDFLAGS  := -L./lib -Linclude
 LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -lncurses -fopenmp
 
 .PHONY: all clean
