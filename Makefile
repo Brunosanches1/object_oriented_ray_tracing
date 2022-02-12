@@ -11,7 +11,7 @@ CXX = g++
 CPPFLAGS := -MMD -MP -fopenmp -lncurses
 CXXFLAGS   := -Wall -O2 -std=c++14  -g
 LDFLAGS  := -L./lib -Linclude -Iinclude/sfml-widgets-master/src
-LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -lncurses -fopenmp lib/libsfml-widgets.a
+LDLIBS   := -lsfml-graphics -lsfml-window -lsfml-system -pthread -lX11 -lncurses -fopenmp
 
 .PHONY: all clean
 
@@ -21,7 +21,7 @@ $(EXE): $(OBJ) | $(BIN_DIR)
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) include/tinyxml2.cpp -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Iinclude/sfml-widgets-master/src -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(BIN_DIR) $(OBJ_DIR):
 	mkdir -p $@
