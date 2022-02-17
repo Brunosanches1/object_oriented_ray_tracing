@@ -67,13 +67,3 @@ Les matériels disponibles pour les objets sont de trois types
     1 Diélectrique
     2 Metalique
     3 Lambertien
-
-# Réferences 
-[1] Ray tracing in one weekend. https://raytracing.github.io/books/RayTracingInOneWeekend.html
-
-[2] NCURSES Programming HOW TO. https://tldp.org/HOWTO/NCURSES-Programming-HOWTO/
-
-[3] TinyXML2 tutorial. https://shilohjames.wordpress.com/2014/04/27/tinyxml2-tutorial/
-
-[4] SFML Documentation v2.5.1. https://www.sfml-dev.org/documentation/2.5.1/
-
